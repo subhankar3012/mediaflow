@@ -132,7 +132,7 @@ class YtDlpService:
             "no_color": True,
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android", "ios", "mweb", "web"]
+                    "player_client": ["visionos", "android"]
                 }
             },
         }
@@ -180,7 +180,7 @@ class YtDlpService:
                 }
         except yt_dlp.utils.DownloadError as e:
             err_str = str(e)
-            if "Private video" in err_str or "Sign in" in err_str:
+            if ("Private video" in err_str or "Sign in" in err_str) and "confirm you're not a bot" not in err_str and "bot" not in err_str.lower():
                 raise YtDlpError("Media is private or requires authentication.", code="AUTHENTICATION_REQUIRED")
             elif "Video unavailable" in err_str:
                 raise YtDlpError("Media is unavailable or was removed.", code="MEDIA_UNAVAILABLE")
@@ -265,7 +265,7 @@ class YtDlpService:
             "http_chunk_size": 5 * 1024 * 1024,  # 5MB download chunks
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android", "ios", "mweb", "web"]
+                    "player_client": ["visionos", "android"]
                 }
             },
         }
