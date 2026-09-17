@@ -104,10 +104,10 @@ def test_adaptive_concurrency_admission():
     assert admitted_crit is False
     assert "critical" in reason_crit.lower()
 
-    # 4. Low RAM (<500MB) rejects admission
+    # 4. Low RAM (<50MB) rejects admission
     snapshot_ram_critical = SystemResourceSnapshot(
         cpu_percent=30.0,
-        available_ram_mb=350.0,
+        available_ram_mb=30.0,
         total_ram_mb=8000.0,
         free_disk_gb=40.0,
         timestamp=time.time()

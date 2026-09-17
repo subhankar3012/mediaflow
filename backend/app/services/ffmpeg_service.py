@@ -119,8 +119,8 @@ class FFmpegService:
         video_is_h264 = vcodec_clean.startswith("avc1") or vcodec_clean.startswith("h264") or vcodec_clean.startswith("avc")
         audio_is_aac = acodec_clean.startswith("mp4a") or acodec_clean.startswith("aac")
 
-        # Build FFmpeg command
-        cmd = [self.ffmpeg_path, "-y", "-i", str(video_path)]
+        # Build FFmpeg command (strictly limited to 1 thread for cloud container memory safety)
+        cmd = [self.ffmpeg_path, "-y", "-threads", "1", "-i", str(video_path)]
         if audio_path and audio_path != video_path:
             cmd.extend(["-i", str(audio_path)])
             cmd.extend(["-map", "0:v:0", "-map", "1:a:0"])
@@ -161,7 +161,7 @@ class FFmpegService:
             # If stream copy failed, attempt safe fallback: full transcode
             if video_is_h264 or audio_is_aac:
                 logger.warning(f"Stream copy failed ({proc.returncode}), attempting full re-encode fallback: {stderr.decode('utf-8', errors='replace')[:200]}")
-                fallback_cmd = [self.ffmpeg_path, "-y", "-i", str(video_path)]
+                fallback_cmd = [self.ffmpeg_path, "-y", "-threads", "1", "-i", str(video_path)]
                 if audio_path and audio_path != video_path:
                     fallback_cmd.extend(["-i", str(audio_path), "-map", "0:v:0", "-map", "1:a:0"])
                 else:
@@ -208,6 +208,7 @@ class FFmpegService:
         cmd = [
             self.ffmpeg_path,
             "-y",
+            "-threads", "1",
             "-i", str(input_path),
             "-c", "copy",
             str(output_path)
@@ -246,6 +247,7 @@ class FFmpegService:
             cmd = [
                 self.ffmpeg_path,
                 "-y",
+                "-threads", "1",
                 "-i", str(input_path),
                 "-vn",
                 "-c:a", "libmp3lame",
@@ -256,6 +258,7 @@ class FFmpegService:
             cmd = [
                 self.ffmpeg_path,
                 "-y",
+                "-threads", "1",
                 "-i", str(input_path),
                 "-vn",
                 "-c:a", "aac",
@@ -266,6 +269,7 @@ class FFmpegService:
             cmd = [
                 self.ffmpeg_path,
                 "-y",
+                "-threads", "1",
                 "-i", str(input_path),
                 "-vn",
                 "-c:a", "copy",

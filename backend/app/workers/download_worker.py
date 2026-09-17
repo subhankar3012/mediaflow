@@ -404,8 +404,10 @@ class DownloadWorker:
             storage_service.delete_job_dir(job_id)
 
         finally:
+            import gc
             ffmpeg_service.kill_job_process(job_id)
             concurrency_manager.release(job_id, success=success)
             rate_limiter.release_job_slot(session_id)
+            gc.collect()
 
 download_worker = DownloadWorker()

@@ -261,6 +261,8 @@ class YtDlpService:
             "no_color": True,
             # Prevent automatic merge here so FFmpegService manages post-processing explicitly
             "nopostoverwrites": True,
+            "buffersize": 1024 * 1024,  # 1MB buffer ceiling
+            "http_chunk_size": 5 * 1024 * 1024,  # 5MB download chunks
             "extractor_args": {
                 "youtube": {
                     "player_client": ["android", "ios", "mweb", "web"]

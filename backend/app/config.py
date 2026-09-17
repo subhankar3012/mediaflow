@@ -49,12 +49,12 @@ class Settings(BaseSettings):
     MAX_ACTIVE_JOBS_HARD_LIMIT: int = 10
     MAX_ACTIVE_HEAVY_TRANSCODES: int = 2
     MAX_QUEUE_DEPTH: int = 25
-    MIN_FREE_DISK_SPACE_GB: float = 3.0
-    MIN_AVAILABLE_RAM_MB: float = 500.0
+    MIN_FREE_DISK_SPACE_GB: float = 0.5
+    MIN_AVAILABLE_RAM_MB: float = 50.0
     CPU_HIGH_THRESHOLD: float = 85.0
     CPU_CRITICAL_THRESHOLD: float = 95.0
-    DISK_SAFETY_MULTIPLIER: float = 2.5
-    DISK_SAFETY_BUFFER_MB: float = 500.0
+    DISK_SAFETY_MULTIPLIER: float = 1.5
+    DISK_SAFETY_BUFFER_MB: float = 100.0
 
     @model_validator(mode="after")
     def adjust_for_environment(self):
