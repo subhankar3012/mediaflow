@@ -1,0 +1,27 @@
+{
+  "short_name": "MediaFlow",
+  "name": "MediaFlow - Video & Audio Downloader",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#fcfdfe",
+  "display": "standalone",
+  "orientation": "portrait",
+  "description": "Download YouTube and Instagram videos in high-definition MP4 or extract crystal clear MP3 audio."
+}

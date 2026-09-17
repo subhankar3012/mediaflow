@@ -1,0 +1,27 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary Downloader Files & Logs
+tmp_downloader/
+logs/
+*.log
+
+# Python Virtual Environments & Cache
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/

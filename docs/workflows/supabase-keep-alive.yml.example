@@ -1,0 +1,47 @@
+name: Supabase Hourly Keep-Alive
+
+on:
+  schedule:
+    # Run once every hour at minute 0 (e.g. 00:00, 01:00, 02:00 UTC)
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions UI
+
+jobs:
+  keep-alive:
+    name: Health Check Ping
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase-backed Health Endpoint
+        env:
+          PRODUCTION_API_URL: ${{ secrets.PRODUCTION_API_URL || 'https://api.yourdownloader.com' }}
+        run: |
+          echo "Sending hourly keep-alive ping to $PRODUCTION_API_URL/api/health"
+          START_TIME=$(date +%s%3N)
+          
+          RESPONSE=$(curl -sS -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}" \
+            --max-time 20 \
+            -H "User-Agent: MediaDownloader-KeepAliveBot/1.0" \
+            "$PRODUCTION_API_URL/api/health")
+          
+          END_TIME=$(date +%s%3N)
+          LATENCY=$((END_TIME - START_TIME))
+          
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+          TIME_TOTAL=$(echo "$RESPONSE" | grep "TIME_TOTAL:" | cut -d':' -f2)
+          BODY=$(echo "$RESPONSE" | grep -v "HTTP_STATUS:" | grep -v "TIME_TOTAL:")
+          
+          echo "HTTP Status: $HTTP_STATUS"
+          echo "Latency: ${LATENCY}ms (curl total: ${TIME_TOTAL}s)"
+          echo "Response Body: $BODY"
+          
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "::error::Health check failed with HTTP status $HTTP_STATUS"
+            exit 1
+          fi
+          
+          # Verify that body reports healthy
+          if echo "$BODY" | grep -q '"status":"healthy"'; then
+            echo "Supabase keep-alive check PASSED: Database is warm and operational."
+          else
+            echo "::warning::Health check returned 200 but status was not 'healthy'."
+          fi

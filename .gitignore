@@ -1,0 +1,48 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary Storage & Logs
+tmp_downloader/
+logs/
+*.log
+
+# Python Virtual Environments & Cache
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node & Frontend Build
+node_modules/
+dist/
+build/
+.turbo/
+.cache/
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Local Scratch & Test artifacts
+scratch/
+.temp/
+supabase/.temp/
+
