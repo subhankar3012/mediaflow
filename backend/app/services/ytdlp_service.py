@@ -130,6 +130,11 @@ class YtDlpService:
             "extract_flat": False,
             "socket_timeout": 20,
             "no_color": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "ios", "mweb", "web"]
+                }
+            },
         }
 
         try:
@@ -256,6 +261,11 @@ class YtDlpService:
             "no_color": True,
             # Prevent automatic merge here so FFmpegService manages post-processing explicitly
             "nopostoverwrites": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "ios", "mweb", "web"]
+                }
+            },
         }
 
         try:
