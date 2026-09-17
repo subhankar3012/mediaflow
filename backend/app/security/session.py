@@ -33,15 +33,18 @@ def get_or_create_session_id(request: Request, response: Optional[Response] = No
     if not session_id:
         session_id = generate_session_id()
         if response:
-            is_secure = settings.ENVIRONMENT == "production"
+            is_secure = settings.ENVIRONMENT == "production" or request.url.scheme == "https"
             response.set_cookie(
                 key=SESSION_COOKIE_NAME,
                 value=session_id,
                 httponly=True,
-                samesite="lax",
+                samesite="none" if is_secure else "lax",
                 secure=is_secure,
                 max_age=86400 * 7
             )
+            response.headers["X-Session-ID"] = session_id
+    elif response:
+        response.headers["X-Session-ID"] = session_id
 
     return session_id
 

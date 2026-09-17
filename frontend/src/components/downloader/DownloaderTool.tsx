@@ -191,7 +191,7 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
     if (outputType === 'thumbnail') {
       // Thumbnail direct download via backend proxy with Content-Disposition: attachment
       if (analysis.thumbnail) {
-        const downloadUrl = `/api/thumbnail/download?url=${encodeURIComponent(analysis.thumbnail)}&title=${encodeURIComponent(analysis.title || 'thumbnail')}`;
+        const downloadUrl = `${api.getBaseUrl()}/api/thumbnail/download?url=${encodeURIComponent(analysis.thumbnail)}&title=${encodeURIComponent(analysis.title || 'thumbnail')}`;
         const a = document.createElement('a');
         a.href = downloadUrl;
         a.setAttribute('download', '');

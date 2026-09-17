@@ -40,6 +40,20 @@ const DEFAULT_API_BASE_URL = (
   ''
 ).replace(/\/+$/, '');
 
+export function getOrCreateSessionId(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    let sess = localStorage.getItem('downloader_session_id');
+    if (!sess) {
+      sess = 'sess_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('downloader_session_id', sess);
+    }
+    return sess;
+  } catch {
+    return '';
+  }
+}
+
 class ApiClient {
   private baseUrl: string;
 
@@ -53,9 +67,11 @@ class ApiClient {
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    const sessionId = getOrCreateSessionId();
     const defaultHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      ...(sessionId ? { 'X-Session-ID': sessionId } : {}),
     };
 
     const config: RequestInit = {
@@ -75,6 +91,14 @@ class ApiClient {
         code: 'NETWORK_ERROR',
         message: 'Could not connect to the server. Please check your internet connection.',
       } as ApiError;
+    }
+
+    // Persist server-provided session ID if present
+    const serverSession = response.headers.get('X-Session-ID');
+    if (serverSession && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('downloader_session_id', serverSession);
+      } catch {}
     }
 
     let data: any;
@@ -151,10 +175,12 @@ class ApiClient {
   }
 
   /**
-   * Constructs the absolute or relative file download URL.
+   * Constructs the absolute file download URL with session authentication.
    */
   getFileDownloadUrl(jobId: string): string {
-    return `/api/jobs/${encodeURIComponent(jobId)}/file`;
+    const sessionId = getOrCreateSessionId();
+    const query = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : '';
+    return `${this.baseUrl}/api/jobs/${encodeURIComponent(jobId)}/file${query}`;
   }
 }
 

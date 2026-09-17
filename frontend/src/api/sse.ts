@@ -1,4 +1,5 @@
 import type { SSEEventData, JobStatus } from './types';
+import { getOrCreateSessionId } from './client';
 
 export interface SSEOptions {
   jobId: string;
@@ -27,7 +28,9 @@ export class JobEventSubscriber {
       ''
     ).replace(/\/+$/, '');
 
-    const url = `${apiBase}/api/jobs/${encodeURIComponent(this.options.jobId)}/events`;
+    const sessionId = getOrCreateSessionId();
+    const query = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : '';
+    const url = `${apiBase}/api/jobs/${encodeURIComponent(this.options.jobId)}/events${query}`;
     this.eventSource = new EventSource(url, { withCredentials: true });
 
     this.eventSource.onmessage = (event) => {
@@ -41,7 +44,12 @@ export class JobEventSubscriber {
           this.close();
 
           if (data.status === 'COMPLETED') {
-            const fileUrl = data.download_url || `/api/jobs/${this.options.jobId}/file`;
+            const rawUrl = data.download_url || `/api/jobs/${this.options.jobId}/file`;
+            const fullUrl = rawUrl.startsWith('http') ? rawUrl : `${apiBase}${rawUrl}`;
+            const delimiter = fullUrl.includes('?') ? '&' : '?';
+            const fileUrl = sessionId && !fullUrl.includes('session_id=')
+              ? `${fullUrl}${delimiter}session_id=${encodeURIComponent(sessionId)}`
+              : fullUrl;
             this.options.onComplete?.(fileUrl);
           }
           this.options.onTerminal?.(data.status, data);

@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from typing import List, Literal, Optional
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -23,15 +23,15 @@ class Settings(BaseSettings):
 
     # Supabase Credentials
     SUPABASE_URL: str = ""
-    SUPABASE_ANON_KEY: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
+    SUPABASE_ANON_KEY: str = ""
 
     # Admin & Security
     ADMIN_API_KEY: str = ""
     TRUSTED_PROXIES: str = "127.0.0.1,::1"
 
-    # Storage & Temporary Directories
-    DOWNLOADER_TEMP_ROOT: Optional[str] = None
+    # Storage Paths
+    DOWNLOADER_TEMP_ROOT: str = ""
     TEMP_STORAGE_PATH: str = ""
     MAX_OUTPUT_SIZE_BYTES: int = 2 * 1024 * 1024 * 1024  # 2 GB
 
@@ -55,6 +55,18 @@ class Settings(BaseSettings):
     CPU_CRITICAL_THRESHOLD: float = 95.0
     DISK_SAFETY_MULTIPLIER: float = 2.5
     DISK_SAFETY_BUFFER_MB: float = 500.0
+
+    @model_validator(mode="after")
+    def adjust_for_environment(self):
+        # On production cloud containers (e.g. Render 512MB RAM tier), auto-tune resource floors
+        if self.ENVIRONMENT == "production":
+            if "MIN_AVAILABLE_RAM_MB" not in os.environ:
+                self.MIN_AVAILABLE_RAM_MB = 50.0
+            if "MIN_FREE_DISK_SPACE_GB" not in os.environ:
+                self.MIN_FREE_DISK_SPACE_GB = 0.5
+            self.DISK_SAFETY_MULTIPLIER = 1.5
+            self.DISK_SAFETY_BUFFER_MB = 100.0
+        return self
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
