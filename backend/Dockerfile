@@ -16,11 +16,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application source
 COPY . .
 
-# Create temporary storage directory
-RUN mkdir -p /tmp/downloader
+# Create temporary storage directory with open permissions for cloud/HuggingFace non-root workers
+RUN mkdir -p /tmp/downloader && chmod 777 /tmp/downloader
 
-EXPOSE 8000
+EXPOSE 8000 7860
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

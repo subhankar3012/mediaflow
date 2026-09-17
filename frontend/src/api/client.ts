@@ -35,11 +35,20 @@ export function getFriendlyErrorMessage(code?: string | null, fallbackMessage?: 
   return fallbackMessage || 'An unexpected error occurred. Please try again.';
 }
 
+const DEFAULT_API_BASE_URL = (
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) ||
+  ''
+).replace(/\/+$/, '');
+
 class ApiClient {
   private baseUrl: string;
 
-  constructor(baseUrl: string = '') {
+  constructor(baseUrl: string = DEFAULT_API_BASE_URL) {
     this.baseUrl = baseUrl;
+  }
+
+  getBaseUrl(): string {
+    return this.baseUrl;
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

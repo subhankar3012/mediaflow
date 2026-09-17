@@ -22,7 +22,12 @@ export class JobEventSubscriber {
   public connect(): void {
     if (this.closed) return;
 
-    const url = `/api/jobs/${encodeURIComponent(this.options.jobId)}/events`;
+    const apiBase = (
+      (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) ||
+      ''
+    ).replace(/\/+$/, '');
+
+    const url = `${apiBase}/api/jobs/${encodeURIComponent(this.options.jobId)}/events`;
     this.eventSource = new EventSource(url, { withCredentials: true });
 
     this.eventSource.onmessage = (event) => {
