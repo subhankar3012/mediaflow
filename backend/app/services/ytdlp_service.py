@@ -1,7 +1,9 @@
 import asyncio
 import os
+import tempfile
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable
+from app.config import settings
 from app.schemas.format import NormalizedFormat, MediaType
 from app.utils.logger import logger
 
@@ -16,6 +18,36 @@ class YtDlpService:
     Encapsulates yt-dlp Python API.
     Isolates extraction, normalization, and downloading logic.
     """
+
+    @staticmethod
+    def _get_cookiefile() -> Optional[str]:
+        """Resolves active cookies file from environment variable, explicit path, or default location."""
+        # 1. Plaintext cookies provided via YTDLP_COOKIES environment variable
+        if getattr(settings, "YTDLP_COOKIES", None) and settings.YTDLP_COOKIES.strip():
+            cookie_path = os.path.join(tempfile.gettempdir(), "ytdlp_cookies.txt")
+            try:
+                with open(cookie_path, "w", encoding="utf-8") as f:
+                    f.write(settings.YTDLP_COOKIES.strip())
+                return cookie_path
+            except Exception as e:
+                logger.warning(f"Failed to write YTDLP_COOKIES env var to file: {e}")
+
+        # 2. Explicit path specified via YTDLP_COOKIES_PATH
+        if getattr(settings, "YTDLP_COOKIES_PATH", None) and settings.YTDLP_COOKIES_PATH:
+            if os.path.exists(settings.YTDLP_COOKIES_PATH):
+                return settings.YTDLP_COOKIES_PATH
+
+        # 3. Default fallback paths
+        default_paths = [
+            os.path.join(os.getcwd(), "cookies.txt"),
+            os.path.join(os.path.dirname(__file__), "..", "..", "cookies.txt"),
+            "/tmp/downloader/cookies.txt",
+        ]
+        for p in default_paths:
+            if os.path.exists(p) and os.path.getsize(p) > 0:
+                return p
+
+        return None
 
     @staticmethod
     def _format_bytes(size: Optional[int]) -> str:
@@ -136,6 +168,10 @@ class YtDlpService:
                 }
             },
         }
+
+        cookiefile = self._get_cookiefile()
+        if cookiefile:
+            ydl_opts["cookiefile"] = cookiefile
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -269,6 +305,10 @@ class YtDlpService:
                 }
             },
         }
+
+        cookiefile = self._get_cookiefile()
+        if cookiefile:
+            ydl_opts["cookiefile"] = cookiefile
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

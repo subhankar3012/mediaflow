@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     ADMIN_API_KEY: str = ""
     TRUSTED_PROXIES: str = "127.0.0.1,::1"
 
+    # YouTube Bot Bypass / Cookies
+    YTDLP_COOKIES: str = ""
+    YTDLP_COOKIES_PATH: str = ""
+
     # Storage Paths
     DOWNLOADER_TEMP_ROOT: str = ""
     TEMP_STORAGE_PATH: str = ""
