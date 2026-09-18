@@ -172,6 +172,13 @@ class YtDlpService:
         cookiefile = self._get_cookiefile()
         if cookiefile:
             ydl_opts["cookiefile"] = cookiefile
+            ydl_opts["extractor_args"] = {
+                "youtube": {
+                    "player_client": ["web", "default"]
+                }
+            }
+            ydl_opts["js_runtimes"] = {"node": {}}
+            ydl_opts["remote_components"] = ["ejs:github"]
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -309,6 +316,13 @@ class YtDlpService:
         cookiefile = self._get_cookiefile()
         if cookiefile:
             ydl_opts["cookiefile"] = cookiefile
+            ydl_opts["extractor_args"] = {
+                "youtube": {
+                    "player_client": ["web", "default"]
+                }
+            }
+            ydl_opts["js_runtimes"] = {"node": {}}
+            ydl_opts["remote_components"] = ["ejs:github"]
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
