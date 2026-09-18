@@ -174,7 +174,7 @@ class YtDlpService:
             ydl_opts["cookiefile"] = cookiefile
             ydl_opts["extractor_args"] = {
                 "youtube": {
-                    "player_client": ["web", "default"]
+                    "player_client": ["web", "web_safari"]
                 }
             }
             ydl_opts["js_runtimes"] = {"node": {}}
@@ -318,7 +318,7 @@ class YtDlpService:
             ydl_opts["cookiefile"] = cookiefile
             ydl_opts["extractor_args"] = {
                 "youtube": {
-                    "player_client": ["web", "default"]
+                    "player_client": ["web", "web_safari"]
                 }
             }
             ydl_opts["js_runtimes"] = {"node": {}}
