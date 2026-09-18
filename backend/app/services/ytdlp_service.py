@@ -259,7 +259,7 @@ class YtDlpService:
         )
 
     def _build_extract_opts(self, use_cookies: bool = False) -> Dict[str, Any]:
-        """Builds extraction options. When use_cookies is False, visionos/android clients run without cookies."""
+        """Builds extraction options. Always enables Node.js runtime for solving JS challenges."""
         opts: Dict[str, Any] = {
             "quiet": True,
             "no_warnings": True,
@@ -268,13 +268,15 @@ class YtDlpService:
             "socket_timeout": 25,
             "no_color": True,
             "ignore_no_formats_error": True,
-            "format": "all",
             "extractor_args": {
                 "youtube": {
                     "player_client": ["visionos", "android"]
                 }
             },
         }
+
+        # Always configure JS runtime so yt-dlp can solve challenges on Linux/Docker
+        self._configure_js_runtime(opts)
 
         if use_cookies:
             cookiefile = self._get_cookiefile()
@@ -285,7 +287,6 @@ class YtDlpService:
                         "player_client": ["web", "web_safari"]
                     }
                 }
-                self._configure_js_runtime(opts)
 
         return opts
 
@@ -295,6 +296,7 @@ class YtDlpService:
         Synchronous method intended to run within an executor.
         Uses dual-strategy: visionos/android without cookies (cleanest on datacenter IPs),
         falling back to web/web_safari with cookies if auth is required or formats are restricted.
+        Guarantees that only non-empty, playable formats are returned.
         """
         import yt_dlp
 
@@ -329,9 +331,9 @@ class YtDlpService:
                             seen_format_ids.add(norm.format_id)
                             normalized_formats.append(norm)
 
-                    # If 0 playable formats extracted and cookie fallback is available, trigger it
-                    if not normalized_formats and not use_cookies and has_cookies:
-                        logger.info(f"No playable formats extracted with visionos for {url}, attempting cookie fallback...")
+                    # If 0 playable formats extracted, do NOT return an empty list! Try next strategy.
+                    if not normalized_formats:
+                        logger.info(f"No playable formats extracted for {url} with use_cookies={use_cookies}")
                         continue
 
                     # Sort formats: video+audio first, then highest resolution, then highest bitrate
@@ -418,6 +420,9 @@ class YtDlpService:
                 }
             },
         }
+        # Always configure JS runtime
+        self._configure_js_runtime(opts)
+
         if use_cookies:
             cookiefile = self._get_cookiefile()
             if cookiefile:
@@ -427,7 +432,6 @@ class YtDlpService:
                         "player_client": ["web", "web_safari"]
                     }
                 }
-                self._configure_js_runtime(opts)
         return opts
 
     def download_media(
