@@ -132,5 +132,7 @@ export interface HealthResponse {
 export interface ApiError {
   code: string;
   message: string;
+  title?: string;
+  tip?: string;
   details?: any;
 }

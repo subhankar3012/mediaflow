@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { AnalyzeResponse, JobResponse, SSEEventData, OutputType } from '../../api/types';
-import { api } from '../../api/client';
+import { api, sanitizeErrorMessage } from '../../api/client';
 import { subscribeToJobEvents } from '../../api/sse';
 import { appConfig } from '../../config/appConfig';
 import { URLInput } from './URLInput';
@@ -10,6 +10,7 @@ import { QualitySelector } from './QualitySelector';
 import { ProgressCard } from './ProgressCard';
 import { SuccessCard } from './SuccessCard';
 import { GalleryView } from './GalleryView';
+import { SkeletonCard } from './SkeletonCard';
 import { ErrorAlert } from './ErrorAlert';
 import { InterstitialModal } from '../ads/InterstitialModal';
 
@@ -18,6 +19,36 @@ export interface DownloaderToolProps {
   placeholder?: string;
   initialUrl?: string;
 }
+
+export interface FormattedError {
+  title: string;
+  message: string;
+  tip?: string;
+}
+
+const formatError = (err: any, fallbackMessage: string = 'An unexpected error occurred.'): FormattedError => {
+  if (err && typeof err === 'object') {
+    if (err.title && err.message) {
+      return {
+        title: err.title,
+        message: err.message,
+        tip: err.tip,
+      };
+    }
+    const sanitized = sanitizeErrorMessage(err.code, err.message || fallbackMessage);
+    return {
+      title: sanitized.title,
+      message: sanitized.message,
+      tip: sanitized.tip,
+    };
+  }
+  const sanitized = sanitizeErrorMessage(null, typeof err === 'string' ? err : fallbackMessage);
+  return {
+    title: sanitized.title,
+    message: sanitized.message,
+    tip: sanitized.tip,
+  };
+};
 
 type Step = 'input' | 'analyzing' | 'analyzed' | 'downloading' | 'completed' | 'error';
 
@@ -33,7 +64,7 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
   const [selectedFormatId, setSelectedFormatId] = useState<string>('');
   const [job, setJob] = useState<JobResponse | null>(null);
   const [progressData, setProgressData] = useState<SSEEventData | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<FormattedError | null>(null);
   const [showInterstitial, setShowInterstitial] = useState(false);
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
@@ -55,12 +86,12 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
   };
 
   // Smooth scroll seamlessly to active area on each step transition:
-  // 1. After Search / Paste -> auto-slide to Result Card
+  // 1. On Search / Paste -> auto-slide to Skeleton / Result Card
   // 2. On clicking Download -> auto-slide to Progress Card
   // 3. After Processing -> auto-slide to Completed Success Card
   useEffect(() => {
     let timer: number | undefined;
-    if (step === 'analyzed' && resultCardRef.current) {
+    if ((step === 'analyzed' || step === 'analyzing') && resultCardRef.current) {
       timer = window.setTimeout(() => {
         scrollToTarget(resultCardRef.current, 75);
       }, 80);
@@ -140,7 +171,7 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
       }
       setStep('analyzed');
     } catch (err: any) {
-      setError(err.message || 'Failed to analyze media URL.');
+      setError(formatError(err, 'Failed to analyze media URL.'));
       setStep('error');
     } finally {
       isSubmittingRef.current = false;
@@ -182,7 +213,7 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
           setStep('completed');
         } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(currentJob.status)) {
           if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-          setError(currentJob.error_message || 'Download processing failed.');
+          setError(formatError(currentJob.error_code || currentJob.error_message, 'Download processing failed.'));
           setStep('error');
         }
       } catch {
@@ -253,7 +284,7 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
         onTerminal: (terminalStatus, data) => {
           if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
           if (terminalStatus === 'FAILED' || terminalStatus === 'EXPIRED') {
-            setError(data.error_message || 'Download processing failed.');
+            setError(formatError(data.error_code || data.error_message, 'Download processing failed.'));
             setStep('error');
           }
         },
@@ -264,7 +295,7 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
 
       unsubscribeRef.current = unsubscribe;
     } catch (err: any) {
-      setError(err.message || 'Could not initiate download job.');
+      setError(formatError(err, 'Could not initiate download job.'));
       setStep('error');
     }
   };
@@ -311,7 +342,7 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
         onTerminal: (terminalStatus, data) => {
           if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
           if (terminalStatus === 'FAILED' || terminalStatus === 'EXPIRED') {
-            setError(data.error_message || 'Download processing failed.');
+            setError(formatError(data.error_code || data.error_message, 'Download processing failed.'));
             setStep('error');
           }
         },
@@ -322,7 +353,7 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
 
       unsubscribeRef.current = unsubscribe;
     } catch (err: any) {
-      setError(err.message || 'Could not initiate ZIP download.');
+      setError(formatError(err, 'Could not initiate ZIP download.'));
       setStep('error');
     }
   };
@@ -380,21 +411,30 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
           onSubmit={handleAnalyze}
           loading={step === 'analyzing'}
           placeholder={placeholder}
-          error={step === 'error' && !analysis ? error : null}
+          error={step === 'error' && !analysis ? error?.message : null}
         />
       </div>
 
       {/* Global Error Alert */}
       {error && (
         <ErrorAlert
-          message={error}
+          title={error.title}
+          message={error.message}
+          tip={error.tip}
           onDismiss={() => setError(null)}
           onRetry={url ? () => handleAnalyze(url) : undefined}
         />
       )}
 
-      {/* 2. Result Card (appears cleanly below input when analyzed) */}
-      {analysis && (
+      {/* 2. Skeleton Loading Card (appears during URL search / analysis) */}
+      {step === 'analyzing' && (
+        <div ref={resultCardRef} className="downloader-slide-target">
+          <SkeletonCard />
+        </div>
+      )}
+
+      {/* 3. Result Card (appears cleanly below input when analyzed) */}
+      {analysis && step !== 'analyzing' && (
         <div className="downloader-result-card" id="resultCard" ref={resultCardRef}>
           {analysis.is_gallery ? (
             step !== 'completed' && (

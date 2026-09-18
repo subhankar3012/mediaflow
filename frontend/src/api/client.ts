@@ -8,31 +8,144 @@ import type {
   ApiError,
 } from './types';
 
-const ERROR_MESSAGE_MAP: Record<string, string> = {
-  INVALID_URL: 'Please enter a valid media URL (e.g. YouTube or Instagram).',
-  UNSUPPORTED_PLATFORM: "This platform isn't supported yet. We currently support YouTube and Instagram.",
-  VIDEO_UNAVAILABLE: 'This media is unavailable, private, or has been removed.',
-  AUTHENTICATION_REQUIRED: 'This content requires login or is age-restricted and cannot be downloaded.',
-  EXTRACTION_FAILED: 'Could not extract media info. Please verify the URL and try again.',
-  ANALYSIS_NOT_FOUND: 'Your analysis session has expired. Please analyze the URL again.',
-  FORMAT_NOT_FOUND: 'That format is no longer available. Please analyze the URL again.',
-  JOB_NOT_FOUND: 'The requested download job was not found.',
-  JOB_NOT_READY: 'Your file is still being prepared. Please wait a moment.',
-  JOB_FAILED: 'Download failed during processing. Please try again.',
-  JOB_EXPIRED: 'This download has expired. Please re-analyze the video to download again.',
-  FILE_NOT_FOUND: 'The prepared file was not found or has been cleaned up.',
-  UNAUTHORIZED_SESSION: 'Your download session expired or is unauthorized. Please try again.',
-  RATE_LIMIT_EXCEEDED: 'Too many requests. Please wait a moment before trying again.',
-  CONCURRENCY_LIMIT_EXCEEDED: 'Download limit reached. Please wait for your current download to finish.',
-  VALIDATION_ERROR: 'Invalid input provided. Please check the URL and try again.',
-  INTERNAL_ERROR: 'A temporary server error occurred. Please try again shortly.',
-};
+export interface FriendlyError {
+  title: string;
+  message: string;
+  tip?: string;
+}
+
+export function sanitizeErrorMessage(code?: string | null, rawMessage?: string | null): FriendlyError {
+  const raw = (rawMessage || '').toLowerCase();
+  const c = (code || '').toUpperCase();
+
+  // 1. Technical/internal errors: Database, Postgres, SQLite, 500, 502, 503, Exceptions, Tracebacks
+  if (
+    c === 'INTERNAL_ERROR' ||
+    raw.includes('database') ||
+    raw.includes('sql') ||
+    raw.includes('postgres') ||
+    raw.includes('sqlite') ||
+    raw.includes('internal server error') ||
+    raw.includes('server error') ||
+    raw.includes('status code 500') ||
+    raw.includes('status code 502') ||
+    raw.includes('status code 503') ||
+    raw.includes('traceback') ||
+    raw.includes('exception') ||
+    raw.includes('jsondecodeerror') ||
+    raw.includes('fastapi') ||
+    raw.includes('pydantic')
+  ) {
+    return {
+      title: 'Temporary Server Hiccup',
+      message: 'Our service experienced a brief connection hiccup while communicating with our background workers.',
+      tip: 'Please wait a few seconds and try again. No download data was lost.',
+    };
+  }
+
+  // 2. Network / connection problems
+  if (
+    c === 'NETWORK_ERROR' ||
+    raw.includes('failed to fetch') ||
+    raw.includes('network') ||
+    raw.includes('timeout') ||
+    raw.includes('econnrefused')
+  ) {
+    return {
+      title: 'Connection Issue',
+      message: 'Could not connect to our servers right now.',
+      tip: 'Please check your internet connection or try again in a few moments.',
+    };
+  }
+
+  // 3. Private, age-restricted, login-required, or removed media
+  if (
+    c === 'AUTHENTICATION_REQUIRED' ||
+    c === 'VIDEO_UNAVAILABLE' ||
+    raw.includes('private') ||
+    raw.includes('login') ||
+    raw.includes('removed') ||
+    raw.includes('unavailable') ||
+    raw.includes('sign in') ||
+    raw.includes('restricted') ||
+    raw.includes('this video is not available') ||
+    raw.includes('post is unavailable')
+  ) {
+    return {
+      title: 'Media Unavailable or Private',
+      message: 'This post, reel, or video is either private, age-restricted, or removed by its creator.',
+      tip: 'We can only download public content. Please verify that the post is accessible without an account.',
+    };
+  }
+
+  // 4. Invalid or unsupported URL
+  if (
+    c === 'INVALID_URL' ||
+    c === 'UNSUPPORTED_PLATFORM' ||
+    raw.includes('unsupported') ||
+    raw.includes('invalid url') ||
+    raw.includes('not a valid')
+  ) {
+    return {
+      title: 'Invalid Media Link',
+      message: 'We could not recognize this link.',
+      tip: 'Make sure you copy a complete, valid link from YouTube (video/short) or Instagram (reel/post/carousel/story).',
+    };
+  }
+
+  // 5. Rate limit / high demand
+  if (
+    c === 'RATE_LIMIT_EXCEEDED' ||
+    c === 'CONCURRENCY_LIMIT_EXCEEDED' ||
+    raw.includes('rate limit') ||
+    raw.includes('too many')
+  ) {
+    return {
+      title: 'High Server Traffic',
+      message: 'Our servers are currently handling high traffic from multiple downloaders.',
+      tip: 'Please wait about 10-15 seconds before trying again.',
+    };
+  }
+
+  // 6. Extraction or format issues
+  if (
+    c === 'EXTRACTION_FAILED' ||
+    c === 'FORMAT_NOT_FOUND' ||
+    raw.includes('extract') ||
+    raw.includes('no video formats') ||
+    raw.includes('yt-dlp') ||
+    raw.includes('ytdl')
+  ) {
+    return {
+      title: 'Could Not Retrieve Media',
+      message: 'We were unable to extract media streams from this link.',
+      tip: 'The platform might be temporarily restricting access. Please check the link and try again.',
+    };
+  }
+
+  // 7. Expired jobs or sessions
+  if (c === 'JOB_EXPIRED' || c === 'ANALYSIS_NOT_FOUND' || c === 'UNAUTHORIZED_SESSION') {
+    return {
+      title: 'Session Expired',
+      message: 'Your download session has expired due to inactivity.',
+      tip: 'Please re-paste or search the link again to start a fresh download.',
+    };
+  }
+
+  // 8. Fallback friendly message
+  const hasRawErrorWord = raw.includes('error') || raw.includes('fail') || raw.includes('cannot');
+  return {
+    title: 'Download Interrupted',
+    message: rawMessage && !hasRawErrorWord && rawMessage.length < 80
+      ? rawMessage
+      : 'Something unexpected occurred while preparing your download.',
+    tip: 'Please try analyzing the link again, or check back in a few moments.',
+  };
+}
 
 export function getFriendlyErrorMessage(code?: string | null, fallbackMessage?: string | null): string {
-  if (code && ERROR_MESSAGE_MAP[code]) {
-    return ERROR_MESSAGE_MAP[code];
-  }
-  return fallbackMessage || 'An unexpected error occurred. Please try again.';
+  const sanitized = sanitizeErrorMessage(code, fallbackMessage);
+  return sanitized.message;
 }
 
 export const getApiBaseUrl = (): string => {
@@ -129,11 +242,13 @@ class ApiClient {
         data?.message ||
         data?.detail?.message ||
         response.statusText;
-      const friendlyMessage = getFriendlyErrorMessage(code, rawMessage);
+      const sanitized = sanitizeErrorMessage(code, rawMessage);
 
       throw {
         code,
-        message: friendlyMessage,
+        title: sanitized.title,
+        message: sanitized.message,
+        tip: sanitized.tip,
         details: data?.error?.details || data?.detail,
       } as ApiError;
     }
