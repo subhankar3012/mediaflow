@@ -1,6 +1,5 @@
 import React from 'react';
-
-export type OutputType = 'mp4' | 'mp3' | 'thumbnail';
+import type { OutputType } from '../../api/types';
 
 export interface OutputSelectorProps {
   selected: OutputType;

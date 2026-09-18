@@ -47,6 +47,11 @@ def determine_mime_type(ext: str) -> str:
         "wav": "audio/wav",
         "flac": "audio/flac",
         "ogg": "audio/ogg",
+        "zip": "application/zip",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "webp": "image/webp",
+        "png": "image/png",
     }
     return mime_map.get(ext.lower().strip("."), "application/octet-stream")
 

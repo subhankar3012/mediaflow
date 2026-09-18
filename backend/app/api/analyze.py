@@ -73,6 +73,10 @@ async def analyze_url(req: AnalyzeRequest, request: Request, response: Response)
 
     # Convert formats to dict for storage
     format_dicts = [fmt.model_dump() for fmt in meta["formats"]]
+    is_gallery = bool(meta.get("is_gallery", False))
+    raw_gallery_items = meta.get("gallery_items", [])
+    gallery_dicts = [item.model_dump() if hasattr(item, "model_dump") else item for item in raw_gallery_items]
+    media_type = meta.get("media_type", "gallery" if is_gallery else "video")
 
     # 4. Store analysis record
     analysis = await job_service.create_analysis(
@@ -84,6 +88,8 @@ async def analyze_url(req: AnalyzeRequest, request: Request, response: Response)
         duration=meta.get("duration"),
         uploader=meta.get("uploader"),
         formats=format_dicts,
+        is_gallery=is_gallery,
+        gallery_items=gallery_dicts,
     )
 
     return AnalyzeResponse(
@@ -95,14 +101,17 @@ async def analyze_url(req: AnalyzeRequest, request: Request, response: Response)
         duration=analysis.get("duration"),
         uploader=analysis.get("uploader"),
         formats=meta["formats"],
+        is_gallery=is_gallery,
+        gallery_items=raw_gallery_items,
+        media_type=media_type,
         expires_at=analysis["expires_at"]
     )
 
 @router.get("/thumbnail/download")
-async def download_thumbnail(url: str, title: Optional[str] = "thumbnail"):
+async def download_thumbnail(url: str, title: Optional[str] = "thumbnail", is_media: bool = False):
     """
-    Direct thumbnail file download endpoint.
-    Fetches the thumbnail from remote CDN, determines correct content type and filename,
+    Direct thumbnail and media image file download endpoint.
+    Fetches the media image/thumbnail from remote CDN, determines correct content type and filename,
     and returns it with Content-Disposition: attachment so the browser downloads
     the file directly instead of opening it in a new tab.
     """
@@ -139,9 +148,9 @@ async def download_thumbnail(url: str, title: Optional[str] = "thumbnail"):
             elif "gif" in content_type:
                 ext = "gif"
 
-            safe_title = "".join(c for c in (title or "thumbnail") if c.isalnum() or c in ("-", "_", " ")).strip()
-            safe_title = safe_title[:60] or "thumbnail"
-            filename = f"{safe_title}-thumbnail.{ext}"
+            safe_title = "".join(c for c in (title or "media") if c.isalnum() or c in ("-", "_", " ")).strip()
+            safe_title = safe_title[:60] or "media"
+            filename = f"{safe_title}.{ext}" if is_media else f"{safe_title}-thumbnail.{ext}"
 
             return Response(
                 content=resp.content,

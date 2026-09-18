@@ -37,15 +37,26 @@ async def create_download_job(req: DownloadRequest, request: Request, response: 
     # 2. Verify format_id/quality exists in normalized formats (never trust client blindly)
     raw_formats = analysis.get("normalized_formats", [])
     target_format = req.format_id or req.quality or "best"
-    valid_format = False
-    chosen_format_dict = {}
-    for fmt in raw_formats:
-        fmt_id = str(fmt.get("format_id")) if isinstance(fmt, dict) else getattr(fmt, "format_id", "")
-        quality = str(fmt.get("quality")) if isinstance(fmt, dict) else getattr(fmt, "quality", "")
-        if target_format in (fmt_id, quality, "best"):
-            valid_format = True
-            chosen_format_dict = fmt if isinstance(fmt, dict) else fmt.model_dump()
-            break
+    is_gallery = bool(analysis.get("is_gallery", False))
+    output_ext = (req.output_format or ("zip" if is_gallery else "mp4")).lower().strip(".")
+
+    if output_ext == "zip" or target_format.startswith("zip"):
+        valid_format = True
+        chosen_format_dict = {"format_id": "zip", "container": "zip", "type": "gallery"}
+        if req.selected_indices:
+            target_format = f"zip:{','.join(map(str, sorted(req.selected_indices)))}"
+        else:
+            target_format = "zip:all"
+    else:
+        valid_format = False
+        chosen_format_dict = {}
+        for fmt in raw_formats:
+            fmt_id = str(fmt.get("format_id")) if isinstance(fmt, dict) else getattr(fmt, "format_id", "")
+            quality = str(fmt.get("quality")) if isinstance(fmt, dict) else getattr(fmt, "quality", "")
+            if target_format in (fmt_id, quality, "best"):
+                valid_format = True
+                chosen_format_dict = fmt if isinstance(fmt, dict) else fmt.model_dump()
+                break
 
     if not valid_format:
         raise HTTPException(

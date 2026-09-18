@@ -9,6 +9,7 @@ import { OutputSelector } from './OutputSelector';
 import { QualitySelector } from './QualitySelector';
 import { ProgressCard } from './ProgressCard';
 import { SuccessCard } from './SuccessCard';
+import { GalleryView } from './GalleryView';
 import { ErrorAlert } from './ErrorAlert';
 import { InterstitialModal } from '../ads/InterstitialModal';
 
@@ -125,12 +126,18 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
       const res = await api.analyze({ url: trimmed });
       setAnalysis(res);
       const isInsta = res.platform === 'instagram';
-      const effType = isInsta ? 'mp4' : outputType;
-      if (isInsta) {
-        setOutputType('mp4');
+      if (res.is_gallery) {
+        setOutputType('zip');
+      } else if (res.media_type === 'image') {
+        setOutputType('thumbnail');
+      } else {
+        const effType = isInsta ? 'mp4' : outputType;
+        if (isInsta) {
+          setOutputType('mp4');
+        }
+        const initialFmt = selectInitialFormat(res.formats, effType, res.platform);
+        setSelectedFormatId(initialFmt);
       }
-      const initialFmt = selectInitialFormat(res.formats, effType, res.platform);
-      setSelectedFormatId(initialFmt);
       setStep('analyzed');
     } catch (err: any) {
       setError(err.message || 'Failed to analyze media URL.');
@@ -188,10 +195,12 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
   const executeDownloadJob = async () => {
     if (!analysis) return;
 
-    if (outputType === 'thumbnail') {
-      // Thumbnail direct download via backend proxy with Content-Disposition: attachment
-      if (analysis.thumbnail) {
-        const downloadUrl = `${api.getBaseUrl()}/api/thumbnail/download?url=${encodeURIComponent(analysis.thumbnail)}&title=${encodeURIComponent(analysis.title || 'thumbnail')}`;
+    if (outputType === 'thumbnail' || analysis.media_type === 'image') {
+      // Thumbnail or single image direct download via backend proxy with Content-Disposition: attachment
+      const targetUrl = analysis.thumbnail;
+      if (targetUrl) {
+        const baseTitle = analysis.title ? analysis.title.replace(/[^a-zA-Z0-9_\-]/g, '_').substring(0, 30) : 'photo';
+        const downloadUrl = `${api.getBaseUrl()}/api/thumbnail/download?url=${encodeURIComponent(targetUrl)}&title=${encodeURIComponent(baseTitle)}&is_media=true`;
         const a = document.createElement('a');
         a.href = downloadUrl;
         a.setAttribute('download', '');
@@ -260,9 +269,67 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
     }
   };
 
+  // 4b. Gallery ZIP Download Trigger
+  const handleDownloadZip = async (selectedIndices: number[]) => {
+    if (!analysis) return;
+    setStep('downloading');
+    setError(null);
+    setOutputType('zip');
+
+    try {
+      const res = await api.createDownload({
+        analysis_id: analysis.analysis_id,
+        format_id: 'zip',
+        quality: 'zip',
+        output_format: 'zip',
+        selected_indices: selectedIndices,
+      });
+
+      const initialJobData: JobResponse = {
+        id: res.job_id,
+        status: res.status,
+        progress: 0,
+      };
+      setJob(initialJobData);
+      setProgressData({
+        job_id: res.job_id,
+        status: res.status,
+        progress: 0,
+      });
+
+      startFallbackPolling(res.job_id);
+
+      const unsubscribe = subscribeToJobEvents({
+        jobId: res.job_id,
+        onEvent: (data) => {
+          setProgressData(data);
+        },
+        onComplete: () => {
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+          setStep('completed');
+        },
+        onTerminal: (terminalStatus, data) => {
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+          if (terminalStatus === 'FAILED' || terminalStatus === 'EXPIRED') {
+            setError(data.error_message || 'Download processing failed.');
+            setStep('error');
+          }
+        },
+        onError: () => {
+          startFallbackPolling(res.job_id);
+        },
+      });
+
+      unsubscribeRef.current = unsubscribe;
+    } catch (err: any) {
+      setError(err.message || 'Could not initiate ZIP download.');
+      setStep('error');
+    }
+  };
+
   // 5. User Click on Main Download CTA Button
   const handleDownloadClick = () => {
-    if (outputType === 'thumbnail') {
+    if (outputType === 'thumbnail' || analysis?.media_type === 'image') {
       executeDownloadJob();
       return;
     }
@@ -289,6 +356,7 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
   const isInstagram = analysis?.platform === 'instagram';
 
   const getDownloadButtonLabel = () => {
+    if (analysis?.media_type === 'image') return 'Download HD Photo';
     if (isInstagram) return 'Download Video';
     if (outputType === 'mp3') return 'Download MP3';
     if (outputType === 'thumbnail') return 'Download Thumbnail';
@@ -328,12 +396,25 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
       {/* 2. Result Card (appears cleanly below input when analyzed) */}
       {analysis && (
         <div className="downloader-result-card" id="resultCard" ref={resultCardRef}>
-          <MediaPreview media={analysis} />
+          {analysis.is_gallery ? (
+            step !== 'completed' && (
+              <GalleryView
+                items={analysis.gallery_items || []}
+                title={analysis.title}
+                uploader={analysis.uploader}
+                onDownloadZip={handleDownloadZip}
+                onDownloadSingleVideo={(item) => handleDownloadZip([item.index])}
+                disabled={step === 'downloading'}
+              />
+            )
+          ) : (
+            <MediaPreview media={analysis} />
+          )}
 
-          {step !== 'completed' && (
+          {step !== 'completed' && !analysis.is_gallery && (
             <>
-              {/* For Instagram: No output/quality tabs. Directly show Download action */}
-              {!isInstagram && (
+              {/* For Instagram or single image: Hide format/quality selectors if Instagram or single image */}
+              {!isInstagram && analysis.media_type !== 'image' && (
                 <>
                   {/* Output Format Selector: MP4 | MP3 | Thumbnail */}
                   <OutputSelector
@@ -381,7 +462,7 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
                     <span>{getDownloadButtonLabel()}</span>
                   </button>
 
-                  {analysis.thumbnail && outputType !== 'thumbnail' && !isInstagram && (
+                  {analysis.thumbnail && outputType !== 'thumbnail' && !isInstagram && analysis.media_type !== 'image' && (
                     <button
                       type="button"
                       onClick={() => handleOutputTypeChange('thumbnail')}
@@ -407,6 +488,7 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
               <ProgressCard
                 job={progressData || job || undefined}
                 isInstagram={isInstagram}
+                outputFormat={outputType}
               />
             </div>
           )}

@@ -4,7 +4,7 @@ export interface SuccessCardProps {
   title?: string | null;
   thumbnail?: string | null;
   fileSize?: number | null;
-  outputFormat: 'mp4' | 'mp3' | 'thumbnail';
+  outputFormat: 'mp4' | 'mp3' | 'thumbnail' | 'zip' | string;
   downloadUrl: string;
   isInstagram?: boolean;
   onReset: () => void;
@@ -54,12 +54,22 @@ export const SuccessCard: React.FC<SuccessCardProps> = ({
   const badgeText = outputFormat.toUpperCase();
   const sizeText = formatBytes(fileSize);
 
-  const headingText = isInstagram ? 'Your video is ready' : 'Your download is ready';
+  const headingText =
+    outputFormat === 'zip'
+      ? 'Your ZIP package is ready'
+      : isInstagram
+      ? 'Your media is ready'
+      : 'Your download is ready';
+
   const downloadButtonText =
-    outputFormat === 'mp3'
+    outputFormat === 'zip'
+      ? 'Download ZIP Archive'
+      : outputFormat === 'mp3'
       ? 'Download MP3'
       : outputFormat === 'thumbnail'
       ? 'Download Cover Art'
+      : outputFormat === 'jpg'
+      ? 'Download Photo'
       : 'Download Video';
 
   return (

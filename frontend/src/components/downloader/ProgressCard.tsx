@@ -10,6 +10,7 @@ export interface ProgressCardProps {
   downloadedBytes?: number | null;
   totalBytes?: number | null;
   isInstagram?: boolean;
+  outputFormat?: string;
   onCancel?: () => void;
 }
 
@@ -18,6 +19,7 @@ export const ProgressCard: React.FC<ProgressCardProps> = ({
   progress,
   status,
   isInstagram = false,
+  outputFormat,
   onCancel,
 }) => {
   const currentProgress = progress !== undefined ? progress : job?.progress || 0;
@@ -40,7 +42,11 @@ export const ProgressCard: React.FC<ProgressCardProps> = ({
     statusLabel = 'Checking your file...';
     isIndeterminate = true;
   } else if (rawStatus === 'COMPLETED') {
-    statusLabel = isInstagram ? 'Your video is ready' : 'Your download is ready';
+    statusLabel = outputFormat === 'zip'
+      ? 'Your ZIP package is ready'
+      : isInstagram
+      ? 'Your media is ready'
+      : 'Your download is ready';
   } else if (rawStatus === 'FAILED') {
     statusLabel = 'Something went wrong';
   } else if (rawStatus === 'EXPIRED') {
@@ -48,10 +54,14 @@ export const ProgressCard: React.FC<ProgressCardProps> = ({
   } else {
     // PROCESSING or DOWNLOADING
     if (pct >= 100) {
-      statusLabel = 'Processing your file...';
+      statusLabel = outputFormat === 'zip' ? 'Packaging your ZIP file...' : 'Processing your file...';
       isIndeterminate = true;
     } else {
-      statusLabel = isInstagram ? 'Preparing your video...' : 'Preparing your download...';
+      statusLabel = outputFormat === 'zip'
+        ? 'Downloading & packaging items...'
+        : isInstagram
+        ? 'Preparing your media...'
+        : 'Preparing your download...';
     }
   }
 

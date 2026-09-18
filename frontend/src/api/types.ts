@@ -2,8 +2,8 @@
  * TypeScript definitions matching API_CONTRACT.md
  */
 
-export type MediaType = 'video' | 'audio' | 'video+audio';
-export type OutputType = 'mp4' | 'mp3' | 'thumbnail';
+export type MediaType = 'video' | 'audio' | 'video+audio' | 'image' | 'gallery';
+export type OutputType = 'mp4' | 'mp3' | 'thumbnail' | 'zip';
 
 export interface NormalizedFormat {
   format_id: string;
@@ -24,6 +24,18 @@ export interface NormalizedFormat {
   downloadable?: boolean;
 }
 
+export interface GalleryItem {
+  index: number;
+  id: string;
+  type: 'image' | 'video';
+  thumbnail?: string | null;
+  display_url?: string | null;
+  width?: number | null;
+  height?: number | null;
+  duration?: number | null;
+  formats?: NormalizedFormat[];
+}
+
 export interface AnalyzeRequest {
   url: string;
 }
@@ -37,6 +49,9 @@ export interface AnalyzeResponse {
   duration?: number | null;
   uploader?: string | null;
   formats: NormalizedFormat[];
+  is_gallery?: boolean;
+  gallery_items?: GalleryItem[];
+  media_type?: 'video' | 'audio' | 'image' | 'gallery';
   expires_at: string;
 }
 
@@ -46,6 +61,7 @@ export interface DownloadRequest {
   quality?: string;
   output_format?: string;
   audio_only?: boolean;
+  selected_indices?: number[];
 }
 
 export interface DownloadResponse {

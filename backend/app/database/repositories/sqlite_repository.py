@@ -42,9 +42,20 @@ class SQLiteRepository(BaseRepository):
                     uploader TEXT,
                     normalized_formats TEXT NOT NULL,
                     created_at TEXT NOT NULL,
-                    expires_at TEXT NOT NULL
+                    expires_at TEXT NOT NULL,
+                    is_gallery INTEGER DEFAULT 0,
+                    gallery_items TEXT DEFAULT '[]'
                 );
             """)
+            # Auto-migrate SQLite if columns are missing in an existing database
+            try:
+                cursor.execute("ALTER TABLE media_analyses ADD COLUMN is_gallery INTEGER DEFAULT 0")
+            except Exception:
+                pass
+            try:
+                cursor.execute("ALTER TABLE media_analyses ADD COLUMN gallery_items TEXT DEFAULT '[]'")
+            except Exception:
+                pass
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS download_jobs (
                     id TEXT PRIMARY KEY,
@@ -79,6 +90,10 @@ class SQLiteRepository(BaseRepository):
         data = dict(analysis_data)
         if isinstance(data.get("normalized_formats"), (list, dict)):
             data["normalized_formats"] = json.dumps(data["normalized_formats"])
+        if isinstance(data.get("gallery_items"), (list, dict)):
+            data["gallery_items"] = json.dumps(data["gallery_items"])
+        if "is_gallery" in data:
+            data["is_gallery"] = 1 if data["is_gallery"] else 0
 
         keys = list(data.keys())
         placeholders = [f":{k}" for k in keys]
@@ -105,6 +120,13 @@ class SQLiteRepository(BaseRepository):
                     res["normalized_formats"] = json.loads(res["normalized_formats"])
                 except Exception:
                     pass
+            if "gallery_items" in res and isinstance(res["gallery_items"], str):
+                try:
+                    res["gallery_items"] = json.loads(res["gallery_items"])
+                except Exception:
+                    res["gallery_items"] = []
+            if "is_gallery" in res:
+                res["is_gallery"] = bool(res["is_gallery"])
             return res
 
     async def get_analysis(self, analysis_id: str) -> Optional[Dict[str, Any]]:

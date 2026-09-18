@@ -1,7 +1,7 @@
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from pydantic import BaseModel, Field
 
-MediaType = Literal["video", "audio", "video+audio"]
+MediaType = Literal["video", "audio", "video+audio", "image", "gallery"]
 
 class NormalizedFormat(BaseModel):
     """Internal normalized representation of an available media stream."""
@@ -23,3 +23,16 @@ class NormalizedFormat(BaseModel):
     downloadable: bool = Field(True, description="Whether this format can be directly downloaded")
     source_video_format_id: Optional[str] = Field(None, description="Internal raw video format id")
     source_audio_format_id: Optional[str] = Field(None, description="Internal raw audio format id")
+
+class GalleryItem(BaseModel):
+    """Represents a single photo or video slide in a carousel or story collection."""
+    index: int = Field(..., description="1-based index in the gallery / carousel")
+    id: str = Field(..., description="Unique media shortcode or identifier")
+    type: Literal["image", "video"] = Field(..., description="Media category of this item")
+    thumbnail: Optional[str] = Field(None, description="Preview thumbnail URL")
+    display_url: Optional[str] = Field(None, description="Full resolution direct media URL")
+    width: Optional[int] = Field(None, description="Width in pixels if known")
+    height: Optional[int] = Field(None, description="Height in pixels if known")
+    duration: Optional[int] = Field(None, description="Duration in seconds if video")
+    formats: List[NormalizedFormat] = Field(default_factory=list, description="Available formats if video")
+

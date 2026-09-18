@@ -3,8 +3,10 @@ import os
 import shutil
 import threading
 import time
+import zipfile
 from pathlib import Path
 from typing import Optional, Dict, Any, List
+import httpx
 from app.config import settings
 from app.schemas.job import JobStatus
 from app.services.job_service import job_service
@@ -210,6 +212,86 @@ class DownloadWorker:
         output_format = job.get("output_format") or "mp4"
         return job_cost_estimator.estimate_cost(format_info, output_format, duration)
 
+    async def _process_gallery_zip(
+        self,
+        job: Dict[str, Any],
+        output_dir: Path,
+        cancel_event: threading.Event
+    ) -> Path:
+        """Packages selected items from a carousel/gallery post into a compressed ZIP archive."""
+        job_id = job["id"]
+        analysis_id = job.get("analysis_id")
+        analysis = await job_service.get_analysis(analysis_id) if analysis_id else None
+        gallery_items = []
+        if analysis:
+            gallery_items = analysis.get("gallery_items") or []
+
+        # Parse requested indices if any (e.g. zip:1,2,3 or zip:all)
+        req_fmt = job.get("requested_format") or ""
+        target_indices = None
+        if req_fmt.startswith("zip:") and req_fmt != "zip:all":
+            idx_str = req_fmt.split(":", 1)[1]
+            parsed_indices = [int(x) for x in idx_str.split(",") if x.strip().isdigit()]
+            if parsed_indices:
+                target_indices = set(parsed_indices)
+
+        # Filter items
+        items_to_download = [
+            it for it in gallery_items
+            if target_indices is None or it.get("index") in target_indices
+        ]
+        if not items_to_download and gallery_items:
+            items_to_download = gallery_items
+
+        if not items_to_download:
+            raise YtDlpError("No gallery items found to package.", code="GALLERY_EMPTY")
+
+        final_output_path = output_dir / "final.zip"
+        total_items = len(items_to_download)
+        log_job(job_id, f"Packaging {total_items} gallery item(s) into ZIP...")
+
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+            with zipfile.ZipFile(final_output_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                for pos, item in enumerate(items_to_download):
+                    if cancel_event.is_set():
+                        raise asyncio.CancelledError()
+
+                    item_idx = item.get("index", pos + 1)
+                    item_type = item.get("type", "image")
+                    media_url = item.get("display_url") or item.get("thumbnail")
+
+                    if not media_url:
+                        continue
+
+                    if media_url.startswith("http"):
+                        try:
+                            resp = await client.get(media_url)
+                            if resp.status_code == 200:
+                                content = resp.content
+                                c_type = resp.headers.get("content-type", "")
+                                ext = "webp" if "webp" in c_type else ("png" if "png" in c_type else "jpg")
+                                if item_type == "video":
+                                    ext = "mp4"
+                                zf.writestr(f"item_{item_idx:02d}.{ext}", content)
+                        except Exception as e:
+                            logger.warning(f"Failed to fetch item {item_idx} ({media_url}): {e}")
+
+                    # Broadcast progress
+                    pct = round(((pos + 1) / total_items) * 100.0, 1)
+                    await job_service.update_progress(
+                        job_id=job_id,
+                        progress=min(pct, 99.9),
+                        downloaded_bytes=final_output_path.stat().st_size if final_output_path.exists() else 0,
+                        total_bytes=None,
+                        speed=None,
+                        eta=None
+                    )
+
+        if not final_output_path.exists() or not zipfile.is_zipfile(final_output_path):
+            raise YtDlpError("Failed to generate valid ZIP archive.", code="ZIP_CREATION_FAILED")
+
+        return final_output_path
+
     async def process_job(self, job_id: str, cost: JobCostEstimate, cancel_event: threading.Event) -> None:
         log_job(job_id, f"Worker started processing (Class: {cost.resource_class.value})")
         job = await job_service.get_job(job_id)
@@ -243,6 +325,23 @@ class DownloadWorker:
             # 2. Check cancellation
             if cancel_event.is_set():
                 raise asyncio.CancelledError()
+
+            # Handle gallery ZIP jobs directly
+            if target_ext == "zip" or requested_format.startswith("zip"):
+                final_output_path = await self._process_gallery_zip(job, output_dir, cancel_event)
+                file_size = final_output_path.stat().st_size
+                shutil.rmtree(source_dir, ignore_errors=True)
+                shutil.rmtree(working_dir, ignore_errors=True)
+                rel_key = str(final_output_path.relative_to(settings.temp_storage_dir))
+                await job_service.update_status(
+                    job_id=job_id,
+                    new_status=JobStatus.COMPLETED,
+                    file_size=file_size,
+                    temporary_file_key=rel_key
+                )
+                log_job(job_id, f"Successfully created gallery ZIP! Size: {file_size} bytes")
+                success = True
+                return
 
             # 3. Resolve platform handler & build format spec
             handler = get_platform_handler(source_url)

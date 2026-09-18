@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable
 from app.config import settings
-from app.schemas.format import NormalizedFormat, MediaType
+from app.schemas.format import NormalizedFormat, MediaType, GalleryItem
 from app.utils.logger import logger
 
 class YtDlpError(Exception):
@@ -271,6 +271,8 @@ class YtDlpService:
             "extract_flat": False,
             "socket_timeout": 25,
             "no_color": True,
+            "ignore_no_formats_error": True,
+            "ignoreerrors": True,
         }
 
         # Always configure JS runtime so yt-dlp can solve challenges on Linux/Docker
@@ -287,8 +289,7 @@ class YtDlpService:
         """
         Extracts metadata and formats without downloading media.
         Synchronous method intended to run within an executor.
-        Uses dual-strategy: tries with cookies first (if available), then without cookies (or vice versa).
-        Guarantees that only non-empty, playable formats are returned.
+        Supports single videos, audio, single photos, and multi-item carousels / stories.
         """
         import yt_dlp
 
@@ -305,12 +306,69 @@ class YtDlpService:
                         last_error = YtDlpError(f"Could not extract info for {url}", code="EXTRACTION_FAILED")
                         continue
 
-                    # If playlist or multi-entry, take first entry
-                    if "_type" in info and info["_type"] == "playlist" and "entries" in info:
-                        entries = list(info.get("entries", []))
-                        if not entries:
-                            raise YtDlpError("Playlist is empty.", code="EMPTY_PLAYLIST")
-                        info = entries[0]
+                    # Check if this is a playlist / multi-item carousel / story
+                    is_playlist = info.get("_type") == "playlist" and "entries" in info
+                    raw_entries = [e for e in info.get("entries", []) if e] if is_playlist else []
+
+                    # 1. Multi-item Carousel / Story Gallery
+                    if is_playlist and len(raw_entries) > 1:
+                        gallery_items: List[GalleryItem] = []
+                        for idx, e in enumerate(raw_entries):
+                            thumbs = e.get("thumbnails") or []
+                            full_res_thumbs = [
+                                t["url"] for t in thumbs
+                                if t.get("url") and "s640x640" not in t["url"] and "s150x150" not in t["url"] and "s320x320" not in t["url"]
+                            ]
+                            best_img = full_res_thumbs[0] if full_res_thumbs else (e.get("thumbnail") or (thumbs[-1]["url"] if thumbs else None))
+                            preview_img = e.get("thumbnail") or (thumbs[-1]["url"] if thumbs else best_img)
+
+                            e_formats = e.get("formats") or []
+                            e_norm_formats: List[NormalizedFormat] = []
+                            for raw_fmt in e_formats:
+                                norm = self.normalize_format(raw_fmt)
+                                if norm:
+                                    e_norm_formats.append(norm)
+
+                            is_item_video = bool(e_norm_formats) or bool(e.get("video_versions")) or bool(e.get("duration") and e.get("duration") > 0)
+                            item_type = "video" if is_item_video else "image"
+
+                            gallery_items.append(GalleryItem(
+                                index=idx + 1,
+                                id=str(e.get("id") or f"item_{idx + 1}"),
+                                type=item_type,
+                                thumbnail=preview_img,
+                                display_url=best_img if item_type == "image" else (e_norm_formats[0].format_id if e_norm_formats else None),
+                                width=e.get("width"),
+                                height=e.get("height"),
+                                duration=int(e.get("duration", 0)) if e.get("duration") else None,
+                                formats=e_norm_formats
+                            ))
+
+                        zip_format = NormalizedFormat(
+                            format_id="zip",
+                            type="gallery",
+                            container="zip",
+                            format_note=f"ZIP Archive ({len(gallery_items)} items)",
+                            quality=f"All {len(gallery_items)} Files",
+                            downloadable=True
+                        )
+
+                        return {
+                            "source_url": url,
+                            "title": info.get("title") or "Instagram Post",
+                            "thumbnail": gallery_items[0].thumbnail if gallery_items else self._select_best_thumbnail(info),
+                            "duration": None,
+                            "uploader": info.get("uploader") or info.get("channel") or info.get("uploader_id"),
+                            "raw_formats": [],
+                            "formats": [zip_format],
+                            "is_gallery": True,
+                            "gallery_items": gallery_items,
+                            "media_type": "gallery",
+                        }
+
+                    # 2. Single item (either single post or playlist of 1)
+                    if is_playlist and raw_entries:
+                        info = raw_entries[0]
 
                     raw_formats = info.get("formats", [])
                     normalized_formats: List[NormalizedFormat] = []
@@ -322,9 +380,41 @@ class YtDlpService:
                             seen_format_ids.add(norm.format_id)
                             normalized_formats.append(norm)
 
-                    # If 0 playable formats extracted, do NOT return an empty list! Try next strategy.
+                    best_thumb = self._select_best_thumbnail(info)
+
+                    # If 0 playable formats extracted, check if this is an image/photo post!
                     if not normalized_formats:
-                        logger.info(f"No playable formats extracted for {url} with use_cookies={use_cookies}")
+                        thumbs = info.get("thumbnails") or []
+                        full_res_thumbs = [
+                            t["url"] for t in thumbs
+                            if t.get("url") and "s640x640" not in t["url"] and "s150x150" not in t["url"] and "s320x320" not in t["url"]
+                        ]
+                        best_img = full_res_thumbs[0] if full_res_thumbs else (best_thumb or (thumbs[-1]["url"] if thumbs else None))
+
+                        if best_img:
+                            photo_format = NormalizedFormat(
+                                format_id="photo_original",
+                                type="image",
+                                container="jpg",
+                                quality="Original Photo",
+                                format_note="High-Resolution Photo",
+                                downloadable=True
+                            )
+                            return {
+                                "source_url": url,
+                                "title": info.get("title") or "Photo",
+                                "thumbnail": best_thumb or best_img,
+                                "duration": None,
+                                "uploader": info.get("uploader") or info.get("channel") or info.get("uploader_id"),
+                                "raw_formats": [],
+                                "formats": [photo_format],
+                                "is_gallery": False,
+                                "gallery_items": [],
+                                "media_type": "image",
+                                "display_url": best_img
+                            }
+
+                        logger.info(f"No playable formats or images extracted for {url} with use_cookies={use_cookies}")
                         last_error = YtDlpError("Requested format is not available.", code="FORMAT_NOT_FOUND")
                         continue
 
@@ -340,11 +430,14 @@ class YtDlpService:
                     return {
                         "source_url": url,
                         "title": info.get("title") or "Untitled Media",
-                        "thumbnail": self._select_best_thumbnail(info),
+                        "thumbnail": best_thumb,
                         "duration": int(info.get("duration", 0)) if info.get("duration") else None,
                         "uploader": info.get("uploader") or info.get("channel") or info.get("uploader_id"),
                         "raw_formats": raw_formats,
                         "formats": normalized_formats,
+                        "is_gallery": False,
+                        "gallery_items": [],
+                        "media_type": "video",
                     }
             except yt_dlp.utils.DownloadError as e:
                 err_str = str(e)

@@ -52,7 +52,9 @@ class JobService:
         thumbnail: Optional[str],
         duration: Optional[int],
         uploader: Optional[str],
-        formats: List[Dict[str, Any]]
+        formats: List[Dict[str, Any]],
+        is_gallery: bool = False,
+        gallery_items: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         analysis_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
@@ -70,6 +72,8 @@ class JobService:
             "normalized_formats": formats,
             "created_at": now.isoformat(),
             "expires_at": expires_at.isoformat(),
+            "is_gallery": is_gallery,
+            "gallery_items": gallery_items or [],
         }
         return await repository.create_analysis(analysis_data)
 
