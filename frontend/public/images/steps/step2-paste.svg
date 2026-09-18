@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" fill="none" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-step2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#f1f5f9" />
+    </linearGradient>
+    <linearGradient id="btn-red" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e11d48" />
+      <stop offset="100%" stop-color="#be123c" />
+    </linearGradient>
+    <filter id="shadow-search" x="-6%" y="-10%" width="112%" height="130%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0f172a" flood-opacity="0.09" />
+    </filter>
+  </defs>
+
+  <!-- Container Box -->
+  <rect width="400" height="240" rx="16" fill="url(#bg-step2)" />
+  <rect x="0.5" y="0.5" width="399" height="239" rx="15.5" stroke="#e2e8f0" />
+
+  <!-- Center Decorative Glow -->
+  <circle cx="200" cy="115" r="90" fill="#e11d48" opacity="0.04" />
+
+  <!-- MediaFlow Search Box Mockup -->
+  <g transform="translate(30, 50)" filter="url(#shadow-search)">
+    <!-- Outer Card Frame -->
+    <rect width="340" height="130" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" />
+
+    <!-- Card Brand Mini Tab -->
+    <rect x="20" y="16" width="76" height="18" rx="9" fill="#f1f5f9" />
+    <circle cx="30" cy="25" r="4" fill="#e11d48" />
+    <text x="40" y="28" fill="#475569" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="9" font-weight="700" letter-spacing="0.04em">INPUT URL</text>
+
+    <!-- Search Input Bar with Paste Pill -->
+    <g transform="translate(16, 46)">
+      <rect width="308" height="52" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+
+      <!-- Link Icon -->
+      <svg x="12" y="18" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+      </svg>
+
+      <!-- URL Text -->
+      <text x="36" y="31" fill="#0f172a" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="11" font-weight="500">https://instagram.com/reel/...</text>
+
+      <!-- Red Search CTA Button -->
+      <g transform="translate(222, 7)">
+        <rect width="78" height="38" rx="8" fill="url(#btn-red)" />
+        <text x="39" y="23" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700" text-anchor="middle">Search</text>
+      </g>
+    </g>
+
+    <!-- Instant Resolving Status Pill Floating Below -->
+    <g transform="translate(16, 106)">
+      <rect width="140" height="16" rx="8" fill="#ecfdf5" />
+      <circle cx="26" cy="114" r="3" fill="#10b981" />
+      <text x="34" y="117" fill="#065f46" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="8.5" font-weight="700">Instant URL Resolve</text>
+    </g>
+  </g>
+</svg>

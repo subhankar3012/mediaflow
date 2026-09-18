@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" fill="none" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-step1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#f1f5f9" />
+    </linearGradient>
+    <linearGradient id="grad-card1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <linearGradient id="grad-accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e11d48" />
+      <stop offset="100%" stop-color="#be123c" />
+    </linearGradient>
+    <filter id="shadow-card" x="-8%" y="-8%" width="116%" height="120%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <!-- Container Box -->
+  <rect width="400" height="240" rx="16" fill="url(#bg-step1)" />
+  <rect x="0.5" y="0.5" width="399" height="239" rx="15.5" stroke="#e2e8f0" />
+
+  <!-- Background Media Mockup Card -->
+  <g transform="translate(60, 24)" filter="url(#shadow-card)">
+    <!-- Video Player Preview Frame -->
+    <rect width="280" height="152" rx="12" fill="url(#grad-card1)" />
+    
+    <!-- Thumbnail Video Mock Graphic -->
+    <circle cx="140" cy="68" r="26" fill="rgba(255,255,255,0.12)" />
+    <polygon points="135,56 151,68 135,80" fill="#ffffff" opacity="0.95" />
+
+    <!-- Video Meta Bars -->
+    <rect x="20" y="112" width="130" height="10" rx="5" fill="rgba(255,255,255,0.4)" />
+    <rect x="20" y="128" width="70" height="8" rx="4" fill="rgba(255,255,255,0.2)" />
+    
+    <!-- Social Icons / Tags -->
+    <rect x="200" y="114" width="60" height="22" rx="11" fill="rgba(255,255,255,0.15)" />
+    <text x="230" y="129" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="10" font-weight="600" text-anchor="middle">Share</text>
+  </g>
+
+  <!-- Floating 'Share -> Copy Link' Modal Overlay -->
+  <g transform="translate(100, 110)" filter="url(#shadow-card)">
+    <rect width="200" height="96" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" />
+    
+    <!-- Header of Share popover -->
+    <text x="20" y="28" fill="#0f172a" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700" letter-spacing="0.02em">SHARE TO...</text>
+    <line x1="20" y1="38" x2="180" y2="38" stroke="#f1f5f9" stroke-width="1" />
+
+    <!-- Copy Link Action Button (Active/Highlighted) -->
+    <rect x="14" y="46" width="172" height="38" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1" />
+    
+    <!-- Clipboard Icon in Green Circle -->
+    <circle cx="34" cy="65" r="12" fill="#10b981" />
+    <path d="M31 63v-1a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1m-6 0h6m-6 0v5a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-5" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="54" y="62" fill="#0f172a" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700">Copy Link</text>
+    <text x="54" y="74" fill="#059669" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="9" font-weight="600">Copied to clipboard!</text>
+
+    <!-- Green Check Badge -->
+    <circle cx="168" cy="65" r="8" fill="#10b981" />
+    <polyline points="165,65 167,67 172,62" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+</svg>

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" fill="none" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-step3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#f1f5f9" />
+    </linearGradient>
+    <linearGradient id="btn-slate" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <filter id="shadow-step3" x="-6%" y="-10%" width="112%" height="130%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0f172a" flood-opacity="0.09" />
+    </filter>
+  </defs>
+
+  <!-- Container Box -->
+  <rect width="400" height="240" rx="16" fill="url(#bg-step3)" />
+  <rect x="0.5" y="0.5" width="399" height="239" rx="15.5" stroke="#e2e8f0" />
+
+  <!-- Format & Download Card Mockup -->
+  <g transform="translate(45, 30)" filter="url(#shadow-step3)">
+    <rect width="310" height="175" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" />
+
+    <!-- Format Tabs Header -->
+    <g transform="translate(18, 16)">
+      <!-- Tab 1: MP4 (Selected) -->
+      <rect width="84" height="28" rx="7" fill="#0f172a" />
+      <text x="42" y="18" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="10" font-weight="700" text-anchor="middle">MP4 Video</text>
+
+      <!-- Tab 2: MP3 -->
+      <rect x="92" width="84" height="28" rx="7" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="134" y="18" fill="#64748b" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="10" font-weight="600" text-anchor="middle">MP3 Audio</text>
+
+      <!-- Tab 3: HD Badge -->
+      <rect x="184" width="88" height="28" rx="7" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="228" y="18" fill="#64748b" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="10" font-weight="600" text-anchor="middle">Cover Art</text>
+    </g>
+
+    <!-- Resolution Selector Row -->
+    <g transform="translate(18, 56)">
+      <rect width="274" height="38" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1" />
+      <circle cx="16" cy="19" r="4" fill="#10b981" />
+      <text x="28" y="23" fill="#0f172a" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="11" font-weight="700">1080p FHD • 60 FPS</text>
+      <text x="246" y="23" fill="#64748b" font-family="ui-monospace, monospace" font-size="10" font-weight="600">~24 MB</text>
+    </g>
+
+    <!-- Main Download CTA Button -->
+    <g transform="translate(18, 104)">
+      <rect width="274" height="42" rx="8" fill="url(#btn-slate)" />
+      
+      <!-- Download Arrow Icon -->
+      <g transform="translate(82, 12)">
+        <path d="M12 2v11m-4-4l4 4 4-4m-9 8h10" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+      
+      <text x="154" y="26" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="700" text-anchor="middle">Download Video</text>
+    </g>
+
+    <!-- Safe to Device badge below -->
+    <g transform="translate(18, 153)">
+      <circle cx="6" cy="7" r="4" fill="#10b981" />
+      <text x="16" y="10" fill="#059669" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="9" font-weight="700">Saved directly to Downloads / Photos</text>
+    </g>
+  </g>
+</svg>

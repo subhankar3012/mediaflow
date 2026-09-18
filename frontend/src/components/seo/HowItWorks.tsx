@@ -26,9 +26,9 @@ const DEFAULT_STEPS: StepItem[] = [
 ];
 
 const STEP_IMAGES = [
-  'https://lh3.googleusercontent.com/aida/AEtjO1URJ0efRg35HPfGL1hjDbhUWqCE-a8n4fOC2R_ykNFMadz4nLwvT_N8kKJGowo8AN9Lgaa1YoYIrR6xACPwsdawBkv53-QawFa--vTZmU3oBOoEL6KelK5kOUx01VcqpIshnpfLmjYOPl-5U8hdgoWhnkvJ-8zhu3gMDgR8seVPPO9RLvN_P7pdT0AdTfUIHvuR8e1f04Xs8JEadUzLg-SAZ_c0EGqFm5s2dvTltTPlzbepZgbdDA9OGWA',
-  'https://lh3.googleusercontent.com/aida/AEtjO1V3K2wT55OmR6Vqr0vKpVvp7Tq8876ZhXCAc6OXca9i4fwHCK1Xqh0Etfq-8bPVwtOMwqswEWysTSAFf8cEq-MUl7EsrYky61kId38WWl-xLKRuoO8FAGEzKMGWXpNNkvaEznZ_V3-zgiYk0tATevq4xMHxLNTIbsvWkDwRKW80yCosxa4Q5cLVTm6Fd7kvsippV6gkbnHGS1kT6xx80mH-9fxGRWaFLgIAU4L_QVpeKGCL_qXuG_pMbqk',
-  'https://lh3.googleusercontent.com/aida/AEtjO1Uh2T5rvxjIijjbnBUGMrKgCL9dI_HHA04B8yO5iIxvOOdNB2LSIqn0f4SvKoDIWB-obnt8c9mzNjoKfsHHriDiOA5DuKKbSOf0dhSkmQGPGwXf9YHEtpdCjFXn9yZCDeFCYJuoPWNsgtQcODZ6-kEPSOO7cMrxuMjXfeelW5T3_tyGYH8eAt7kMfR03rpXWRDEms_l0ZZqo7Z2IIjcjwk-9QP_S0Hux3jszJHhnO1YgoGG9iwL5HT6NkY',
+  '/images/steps/step1-copy.svg',
+  '/images/steps/step2-paste.svg',
+  '/images/steps/step3-download.svg',
 ];
 
 export const HowItWorks: React.FC<HowItWorksProps> = ({
@@ -62,10 +62,8 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                 alt="Step 1: Copy media link"
                 className="step-preview-img"
                 loading="lazy"
-                onError={(e) => {
-                  // Fallback to placeholder if image link fails
-                  e.currentTarget.style.display = 'none';
-                }}
+                width="400"
+                height="240"
               />
             </div>
             <h3 className="step-title-editorial">{steps[0]?.title || DEFAULT_STEPS[0].title}</h3>
@@ -91,9 +89,8 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                 alt="Step 2: Paste link and search"
                 className="step-preview-img"
                 loading="lazy"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
+                width="400"
+                height="240"
               />
             </div>
             <h3 className="step-title-editorial">{steps[1]?.title || DEFAULT_STEPS[1].title}</h3>
@@ -119,9 +116,8 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                 alt="Step 3: Select quality and download"
                 className="step-preview-img"
                 loading="lazy"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
+                width="400"
+                height="240"
               />
             </div>
             <h3 className="step-title-editorial">{steps[2]?.title || DEFAULT_STEPS[2].title}</h3>
