@@ -61,7 +61,7 @@ async def analyze_url(req: AnalyzeRequest, request: Request, response: Response)
             mapped_code = "EXTRACTION_FAILED"
 
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", status.HTTP_422_UNPROCESSABLE_ENTITY),
             detail={"error_code": mapped_code, "message": e.message}
         )
     except Exception:

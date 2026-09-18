@@ -15,6 +15,9 @@ async def test_health_endpoint():
     assert data["ffmpeg"] == "ok"
     assert data["ffprobe"] == "ok"
     assert data["storage"] == "ok"
+    assert "cookies_loaded" in data
+    assert "cookies_count" in data
+    assert "cookies_valid" in data
 
 @pytest.mark.asyncio
 async def test_analyze_unsupported_domain():

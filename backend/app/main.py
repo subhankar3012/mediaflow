@@ -78,7 +78,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         message=combined_msg,
         details=clean_errors
     )
-    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=err_resp.model_dump())
+    return JSONResponse(status_code=getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", status.HTTP_422_UNPROCESSABLE_ENTITY), content=err_resp.model_dump())
 
 @app.exception_handler(SecurityError)
 async def security_exception_handler(request: Request, exc: SecurityError):

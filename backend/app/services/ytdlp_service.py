@@ -39,17 +39,93 @@ class YtDlpService:
         ydl_opts["remote_components"] = ["ejs:github"]
 
     @staticmethod
-    def _get_cookiefile() -> Optional[str]:
-        """Resolves active cookies file from environment variable, explicit path, or default location."""
-        # 1. Plaintext cookies provided via YTDLP_COOKIES environment variable
-        if getattr(settings, "YTDLP_COOKIES", None) and settings.YTDLP_COOKIES.strip():
-            cookie_path = os.path.join(tempfile.gettempdir(), "ytdlp_cookies.txt")
+    def _sanitize_and_validate_cookies(raw_content: str) -> Optional[str]:
+        """
+        Sanitizes cookie content to ensure valid Netscape format.
+        Handles base64, literal \\n/\\t escapes, and space-to-tab repair.
+        Validates with MozillaCookieJar and returns a valid file path or None.
+        """
+        import base64
+        import http.cookiejar
+
+        raw_stripped = raw_content.strip()
+        if not raw_stripped:
+            return None
+
+        # 1. Decode base64 if needed
+        if raw_stripped.startswith("ey") or raw_stripped.startswith("I05ldHNjYXBl") or raw_stripped.startswith("IyBOZXRzY2FwZQ"):
             try:
-                with open(cookie_path, "w", encoding="utf-8") as f:
-                    f.write(settings.YTDLP_COOKIES.strip())
+                decoded = base64.b64decode(raw_stripped).decode("utf-8", errors="ignore")
+                if "Netscape" in decoded or ".youtube.com" in decoded:
+                    raw_content = decoded
+            except Exception:
+                pass
+
+        # 2. Unescape literal escaped newlines or tabs
+        if r"\n" in raw_content and "\n" not in raw_content:
+            raw_content = raw_content.replace(r"\n", "\n")
+        if r"\t" in raw_content:
+            raw_content = raw_content.replace(r"\t", "\t")
+
+        lines = raw_content.splitlines()
+        cleaned_lines = []
+        has_header = False
+
+        for line in lines:
+            line_s = line.strip()
+            if not line_s:
+                continue
+            if line_s.startswith("#"):
+                if "Netscape HTTP Cookie File" in line_s:
+                    has_header = True
+                cleaned_lines.append(line_s)
+                continue
+
+            # If line already has tabs, check token count
+            if "\t" in line:
+                parts = line.split("\t")
+                if len(parts) >= 7:
+                    cleaned_lines.append("\t".join(p.strip() for p in parts))
+                    continue
+
+            # If line has spaces instead of tabs
+            parts = line.split()
+            if len(parts) >= 7 and parts[1].upper() in ("TRUE", "FALSE") and parts[3].upper() in ("TRUE", "FALSE"):
+                normalized = "\t".join(parts[:6] + [" ".join(parts[6:])])
+                cleaned_lines.append(normalized)
+
+        if not has_header:
+            cleaned_lines.insert(0, "# Netscape HTTP Cookie File")
+            cleaned_lines.insert(1, "# https://curl.haxx.se/rfc/cookie_spec.html")
+
+        cookie_text = "\n".join(cleaned_lines) + "\n"
+        cookie_path = os.path.join(tempfile.gettempdir(), "ytdlp_cookies.txt")
+
+        try:
+            with open(cookie_path, "w", encoding="utf-8") as f:
+                f.write(cookie_text)
+
+            # Validate with MozillaCookieJar
+            jar = http.cookiejar.MozillaCookieJar(cookie_path)
+            jar.load(ignore_discard=True, ignore_expires=True)
+            if len(jar) > 0:
+                logger.info(f"Loaded and validated {len(jar)} cookies.")
                 return cookie_path
-            except Exception as e:
-                logger.warning(f"Failed to write YTDLP_COOKIES env var to file: {e}")
+            else:
+                logger.warning("Cookie file parsed with 0 valid cookies.")
+                return None
+        except Exception as e:
+            logger.warning(f"Failed to validate cookie file: {e}")
+            return None
+
+    @classmethod
+    def _get_cookiefile(cls) -> Optional[str]:
+        """Resolves active cookies file from environment variable, explicit path, or default location."""
+        # 1. Plaintext or base64 cookies provided via YTDLP_COOKIES environment variable
+        if getattr(settings, "YTDLP_COOKIES", None) and settings.YTDLP_COOKIES.strip():
+            path = cls._sanitize_and_validate_cookies(settings.YTDLP_COOKIES)
+            if path:
+                return path
 
         # 2. Explicit path specified via YTDLP_COOKIES_PATH
         if getattr(settings, "YTDLP_COOKIES_PATH", None) and settings.YTDLP_COOKIES_PATH:
@@ -67,6 +143,21 @@ class YtDlpService:
                 return p
 
         return None
+
+    @classmethod
+    def get_cookies_status(cls) -> Dict[str, Any]:
+        """Returns structured status of loaded cookies for health inspections."""
+        cookiefile = cls._get_cookiefile()
+        if not cookiefile:
+            return {"loaded": False, "count": 0, "valid": False}
+        try:
+            import http.cookiejar
+            jar = http.cookiejar.MozillaCookieJar(cookiefile)
+            jar.load(ignore_discard=True, ignore_expires=True)
+            count = len(jar)
+            return {"loaded": True, "count": count, "valid": count > 0}
+        except Exception:
+            return {"loaded": True, "count": 0, "valid": False}
 
     @staticmethod
     def _format_bytes(size: Optional[int]) -> str:
@@ -167,20 +258,17 @@ class YtDlpService:
             format_note=str(format_note) if format_note else None
         )
 
-    def extract_metadata(self, url: str) -> Dict[str, Any]:
-        """
-        Extracts metadata and formats without downloading media.
-        Synchronous method intended to run within an executor.
-        """
-        import yt_dlp
-
-        ydl_opts = {
+    def _build_extract_opts(self, use_cookies: bool = False) -> Dict[str, Any]:
+        """Builds extraction options. When use_cookies is False, visionos/android clients run without cookies."""
+        opts: Dict[str, Any] = {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "extract_flat": False,
-            "socket_timeout": 20,
+            "socket_timeout": 25,
             "no_color": True,
+            "ignore_no_formats_error": True,
+            "format": "all",
             "extractor_args": {
                 "youtube": {
                     "player_client": ["visionos", "android"]
@@ -188,77 +276,159 @@ class YtDlpService:
             },
         }
 
-        cookiefile = self._get_cookiefile()
-        if cookiefile:
-            ydl_opts["cookiefile"] = cookiefile
-            ydl_opts["extractor_args"] = {
-                "youtube": {
-                    "player_client": ["web", "web_safari"]
+        if use_cookies:
+            cookiefile = self._get_cookiefile()
+            if cookiefile:
+                opts["cookiefile"] = cookiefile
+                opts["extractor_args"] = {
+                    "youtube": {
+                        "player_client": ["web", "web_safari"]
+                    }
                 }
-            }
-            self._configure_js_runtime(ydl_opts)
+                self._configure_js_runtime(opts)
 
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                if not info:
-                    raise YtDlpError("Could not retrieve media info.", code="EXTRACTION_FAILED")
+        return opts
 
-                # If playlist or multi-entry, take first entry
-                if "_type" in info and info["_type"] == "playlist" and "entries" in info:
-                    entries = list(info.get("entries", []))
-                    if not entries:
-                        raise YtDlpError("Playlist is empty.", code="EMPTY_PLAYLIST")
-                    info = entries[0]
+    def extract_metadata(self, url: str) -> Dict[str, Any]:
+        """
+        Extracts metadata and formats without downloading media.
+        Synchronous method intended to run within an executor.
+        Uses dual-strategy: visionos/android without cookies (cleanest on datacenter IPs),
+        falling back to web/web_safari with cookies if auth is required or formats are restricted.
+        """
+        import yt_dlp
 
-                raw_formats = info.get("formats", [])
-                normalized_formats: List[NormalizedFormat] = []
-                seen_format_ids = set()
+        has_cookies = bool(self._get_cookiefile())
+        # Strategy 1: visionos/android without cookies (bypasses bot challenges for public videos)
+        # Strategy 2: web/web_safari with cookies (unlocks age-restricted and private videos)
+        strategies = [False, True] if has_cookies else [False]
+        last_error = None
 
-                for raw_fmt in raw_formats:
-                    norm = self.normalize_format(raw_fmt)
-                    if norm and norm.format_id not in seen_format_ids:
-                        seen_format_ids.add(norm.format_id)
-                        normalized_formats.append(norm)
+        for use_cookies in strategies:
+            try:
+                ydl_opts = self._build_extract_opts(use_cookies=use_cookies)
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                    if not info:
+                        continue
 
-                # Sort formats: video+audio first, then highest resolution, then highest bitrate
-                normalized_formats.sort(
-                    key=lambda f: (
-                        1 if f.type == "video+audio" else (2 if f.type == "video" else 3),
-                        -(f.height or 0),
-                        -(f.bitrate or 0)
+                    # If playlist or multi-entry, take first entry
+                    if "_type" in info and info["_type"] == "playlist" and "entries" in info:
+                        entries = list(info.get("entries", []))
+                        if not entries:
+                            raise YtDlpError("Playlist is empty.", code="EMPTY_PLAYLIST")
+                        info = entries[0]
+
+                    raw_formats = info.get("formats", [])
+                    normalized_formats: List[NormalizedFormat] = []
+                    seen_format_ids = set()
+
+                    for raw_fmt in raw_formats:
+                        norm = self.normalize_format(raw_fmt)
+                        if norm and norm.format_id not in seen_format_ids:
+                            seen_format_ids.add(norm.format_id)
+                            normalized_formats.append(norm)
+
+                    # If 0 playable formats extracted and cookie fallback is available, trigger it
+                    if not normalized_formats and not use_cookies and has_cookies:
+                        logger.info(f"No playable formats extracted with visionos for {url}, attempting cookie fallback...")
+                        continue
+
+                    # Sort formats: video+audio first, then highest resolution, then highest bitrate
+                    normalized_formats.sort(
+                        key=lambda f: (
+                            1 if f.type == "video+audio" else (2 if f.type == "video" else 3),
+                            -(f.height or 0),
+                            -(f.bitrate or 0)
+                        )
                     )
-                )
 
-                return {
-                    "source_url": url,
-                    "title": info.get("title") or "Untitled Media",
-                    "thumbnail": self._select_best_thumbnail(info),
-                    "duration": int(info.get("duration", 0)) if info.get("duration") else None,
-                    "uploader": info.get("uploader") or info.get("channel") or info.get("uploader_id"),
-                    "raw_formats": raw_formats,
-                    "formats": normalized_formats,
-                }
-        except yt_dlp.utils.DownloadError as e:
-            err_str = str(e)
+                    return {
+                        "source_url": url,
+                        "title": info.get("title") or "Untitled Media",
+                        "thumbnail": self._select_best_thumbnail(info),
+                        "duration": int(info.get("duration", 0)) if info.get("duration") else None,
+                        "uploader": info.get("uploader") or info.get("channel") or info.get("uploader_id"),
+                        "raw_formats": raw_formats,
+                        "formats": normalized_formats,
+                    }
+            except yt_dlp.utils.DownloadError as e:
+                err_str = str(e)
+                last_error = e
+                # Check if error indicates authentication or format issues and cookie fallback is available
+                if not use_cookies and has_cookies and any(k in err_str.lower() for k in ["sign in", "confirm your age", "bot", "private video", "login", "requested format"]):
+                    logger.info(f"Initial extraction encountered restriction ({err_str}), attempting cookie fallback...")
+                    continue
+
+                if ("Private video" in err_str or "Sign in" in err_str) and "confirm you're not a bot" not in err_str and "bot" not in err_str.lower():
+                    raise YtDlpError("Media is private or requires authentication.", code="AUTHENTICATION_REQUIRED")
+                elif "Video unavailable" in err_str:
+                    raise YtDlpError("Media is unavailable or was removed.", code="MEDIA_UNAVAILABLE")
+                elif "Geo-restricted" in err_str:
+                    raise YtDlpError("Media is restricted in this region.", code="GEO_RESTRICTED")
+                else:
+                    raise YtDlpError(f"Extraction error: {err_str}", code="DOWNLOAD_ERROR")
+            except Exception as e:
+                if isinstance(e, YtDlpError):
+                    raise
+                last_error = e
+                if not use_cookies and has_cookies:
+                    logger.info(f"Initial extraction raised {e}, attempting cookie fallback...")
+                    continue
+                logger.exception("Unexpected error during yt-dlp metadata extraction")
+                raise YtDlpError(f"Unexpected extraction failure: {str(e)}", code="INTERNAL_ERROR")
+
+        if last_error:
+            err_str = str(last_error)
             if ("Private video" in err_str or "Sign in" in err_str) and "confirm you're not a bot" not in err_str and "bot" not in err_str.lower():
                 raise YtDlpError("Media is private or requires authentication.", code="AUTHENTICATION_REQUIRED")
-            elif "Video unavailable" in err_str:
-                raise YtDlpError("Media is unavailable or was removed.", code="MEDIA_UNAVAILABLE")
-            elif "Geo-restricted" in err_str:
-                raise YtDlpError("Media is restricted in this region.", code="GEO_RESTRICTED")
-            else:
-                raise YtDlpError(f"Extraction error: {err_str}", code="DOWNLOAD_ERROR")
-        except Exception as e:
-            if isinstance(e, YtDlpError):
-                raise
-            logger.exception("Unexpected error during yt-dlp metadata extraction")
-            raise YtDlpError(f"Unexpected extraction failure: {str(e)}", code="INTERNAL_ERROR")
+            raise YtDlpError(f"Extraction error: {err_str}", code="DOWNLOAD_ERROR")
+        raise YtDlpError("Could not retrieve media info.", code="EXTRACTION_FAILED")
 
     async def extract_metadata_async(self, url: str) -> Dict[str, Any]:
         """Asynchronous wrapper for extract_metadata."""
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self.extract_metadata, url)
+
+    def _build_download_opts(
+        self,
+        format_spec: str,
+        output_template: str,
+        progress_hook: Callable[[Dict[str, Any]], None],
+        use_cookies: bool = False
+    ) -> Dict[str, Any]:
+        """Builds download options for yt-dlp."""
+        opts: Dict[str, Any] = {
+            "format": format_spec,
+            "outtmpl": output_template,
+            "progress_hooks": [progress_hook],
+            "quiet": True,
+            "no_warnings": True,
+            "socket_timeout": 30,
+            "retries": 10,
+            "fragment_retries": 10,
+            "continuedl": True,
+            "no_color": True,
+            "nopostoverwrites": True,
+            "buffersize": 1024 * 1024,
+            "http_chunk_size": 5 * 1024 * 1024,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["visionos", "android"]
+                }
+            },
+        }
+        if use_cookies:
+            cookiefile = self._get_cookiefile()
+            if cookiefile:
+                opts["cookiefile"] = cookiefile
+                opts["extractor_args"] = {
+                    "youtube": {
+                        "player_client": ["web", "web_safari"]
+                    }
+                }
+                self._configure_js_runtime(opts)
+        return opts
 
     def download_media(
         self,
@@ -271,6 +441,7 @@ class YtDlpService:
         """
         Downloads the specified format using yt-dlp.
         Synchronous execution inside worker thread/executor with active cancellation support.
+        Includes automatic retry with alternate player client if initial attempt fails.
         """
         import yt_dlp
 
@@ -309,57 +480,43 @@ class YtDlpService:
                     "eta": "00:00",
                 })
 
-        ydl_opts = {
-            "format": format_spec,
-            "outtmpl": output_template,
-            "progress_hooks": [_hook],
-            "quiet": True,
-            "no_warnings": True,
-            "socket_timeout": 30,
-            "retries": 10,
-            "fragment_retries": 10,
-            "continuedl": True,
-            "no_color": True,
-            # Prevent automatic merge here so FFmpegService manages post-processing explicitly
-            "nopostoverwrites": True,
-            "buffersize": 1024 * 1024,  # 1MB buffer ceiling
-            "http_chunk_size": 5 * 1024 * 1024,  # 5MB download chunks
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["visionos", "android"]
-                }
-            },
-        }
+        has_cookies = bool(self._get_cookiefile())
+        strategies = [False, True] if has_cookies else [False]
+        last_error = None
 
-        cookiefile = self._get_cookiefile()
-        if cookiefile:
-            ydl_opts["cookiefile"] = cookiefile
-            ydl_opts["extractor_args"] = {
-                "youtube": {
-                    "player_client": ["web", "web_safari"]
-                }
-            }
-            self._configure_js_runtime(ydl_opts)
-
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
+        for use_cookies in strategies:
+            if cancellation_event and cancellation_event.is_set():
+                raise YtDlpError("Download was cancelled.", code="CANCELLED")
+            try:
+                ydl_opts = self._build_download_opts(format_spec, output_template, _hook, use_cookies=use_cookies)
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    if cancellation_event and cancellation_event.is_set():
+                        raise YtDlpError("Download was cancelled.", code="CANCELLED")
+                    downloaded_file = ydl.prepare_filename(info)
+                    return downloaded_file
+            except yt_dlp.utils.DownloadCancelled:
+                raise YtDlpError("Download was cancelled.", code="CANCELLED")
+            except yt_dlp.utils.DownloadError as e:
                 if cancellation_event and cancellation_event.is_set():
                     raise YtDlpError("Download was cancelled.", code="CANCELLED")
-                downloaded_file = ydl.prepare_filename(info)
-                return downloaded_file
-        except yt_dlp.utils.DownloadCancelled:
-            raise YtDlpError("Download was cancelled.", code="CANCELLED")
-        except yt_dlp.utils.DownloadError as e:
-            if cancellation_event and cancellation_event.is_set():
-                raise YtDlpError("Download was cancelled.", code="CANCELLED")
-            raise YtDlpError(f"Download failed: {str(e)}", code="DOWNLOAD_FAILED")
-        except Exception as e:
-            if isinstance(e, YtDlpError):
-                raise
-            if cancellation_event and cancellation_event.is_set():
-                raise YtDlpError("Download was cancelled.", code="CANCELLED")
-            raise YtDlpError(f"Unexpected download error: {str(e)}", code="INTERNAL_ERROR")
+                last_error = e
+                err_str = str(e)
+                if use_cookies != strategies[-1]:
+                    logger.warning(f"Download attempt (use_cookies={use_cookies}) failed with '{err_str}', retrying with alternate client...")
+                    continue
+                raise YtDlpError(f"Download failed: {err_str}", code="DOWNLOAD_FAILED")
+            except Exception as e:
+                if isinstance(e, YtDlpError):
+                    raise
+                if cancellation_event and cancellation_event.is_set():
+                    raise YtDlpError("Download was cancelled.", code="CANCELLED")
+                last_error = e
+                if use_cookies != strategies[-1]:
+                    continue
+                raise YtDlpError(f"Unexpected download error: {str(e)}", code="INTERNAL_ERROR")
+
+        raise YtDlpError(f"Download failed: {str(last_error)}", code="DOWNLOAD_FAILED")
 
     async def download_media_async(
         self,

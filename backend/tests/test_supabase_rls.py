@@ -64,7 +64,7 @@ async def test_supabase_rls_isolation():
             "apikey": settings.SUPABASE_ANON_KEY,
             "Authorization": f"Bearer {settings.SUPABASE_ANON_KEY}",
         }
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             resp_none = await client.get(
                 rest_url,
                 headers=anon_headers_none,
@@ -79,7 +79,7 @@ async def test_supabase_rls_isolation():
             "Authorization": f"Bearer {settings.SUPABASE_ANON_KEY}",
             "x-session-id": session_alice,
         }
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             resp_alice = await client.get(
                 rest_url,
                 headers=anon_headers_alice,
@@ -97,7 +97,7 @@ async def test_supabase_rls_isolation():
             "Authorization": f"Bearer {settings.SUPABASE_ANON_KEY}",
             "x-session-id": session_bob,
         }
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             resp_bob = await client.get(
                 rest_url,
                 headers=anon_headers_bob,
@@ -110,7 +110,7 @@ async def test_supabase_rls_isolation():
             assert data_bob[0]["session_id"] == session_bob
 
         # (d) Anon trying to insert -> Must fail with RLS violation (42501 or 401/403)
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             insert_attempt = await client.post(
                 rest_url,
                 headers=anon_headers_alice,
