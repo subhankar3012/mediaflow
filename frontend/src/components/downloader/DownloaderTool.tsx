@@ -228,6 +228,9 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
         progress: 0,
       });
 
+      // Start polling immediately alongside SSE to eliminate waiting lag
+      startFallbackPolling(res.job_id);
+
       // Subscribe to realtime SSE events
       const unsubscribe = subscribeToJobEvents({
         jobId: res.job_id,
@@ -239,13 +242,13 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
           setStep('completed');
         },
         onTerminal: (terminalStatus, data) => {
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
           if (terminalStatus === 'FAILED' || terminalStatus === 'EXPIRED') {
             setError(data.error_message || 'Download processing failed.');
             setStep('error');
           }
         },
         onError: () => {
-          // Switch to polling fallback
           startFallbackPolling(res.job_id);
         },
       });

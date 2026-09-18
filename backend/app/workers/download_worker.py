@@ -37,7 +37,22 @@ class DownloadWorker:
     def start(self) -> None:
         self._running = True
         self._dispatcher_task = asyncio.create_task(self._dispatcher_loop())
+        asyncio.create_task(self._recover_queued_jobs())
         logger.info("DownloadWorker started adaptive multi-task dispatcher loop.")
+
+    async def _recover_queued_jobs(self) -> None:
+        """Recovers any jobs left in QUEUED state when the server/container restarts."""
+        try:
+            await asyncio.sleep(2.0)
+            from app.database import repository
+            if hasattr(repository, "client") and repository.client:
+                res = repository.client.table("download_jobs").select("id").eq("status", "QUEUED").limit(20).execute()
+                if res.data:
+                    logger.info(f"Recovering {len(res.data)} orphaned QUEUED job(s) from database...")
+                    for row in res.data:
+                        await job_queue.enqueue(row["id"])
+        except Exception as e:
+            logger.warning(f"Failed to recover queued jobs: {e}")
 
     def stop(self) -> None:
         self._running = False
@@ -86,6 +101,10 @@ class DownloadWorker:
 
         # 5. Release concurrency reservation
         concurrency_manager.release(job_id, success=False)
+        if not task:
+            job = await job_service.get_job(job_id)
+            if job and job.get("session_id"):
+                rate_limiter.release_job_slot(job["session_id"])
 
         # 6. Update database status
         await job_service.update_status(
@@ -143,6 +162,7 @@ class DownloadWorker:
                         error_code="SERVICE_BUSY",
                         error_message="The server is experiencing high traffic. Please try again in a moment."
                     )
+                    rate_limiter.release_job_slot(session_id)
                     job_queue.task_done()
                     continue
 
@@ -269,8 +289,11 @@ class DownloadWorker:
             if cancel_event.is_set():
                 raise asyncio.CancelledError()
 
-            # 6. Inspect downloaded files in source/
-            downloaded_files = [f for f in source_dir.iterdir() if f.is_file() and f.stat().st_size > 0]
+            # 6. Inspect downloaded files in source/ (filter out incomplete part files)
+            downloaded_files = [
+                f for f in source_dir.iterdir()
+                if f.is_file() and f.stat().st_size > 0 and not f.name.endswith(".part") and not f.name.endswith(".ytdl")
+            ]
             if not downloaded_files:
                 raise YtDlpError("No downloaded files were found in temporary directory.", code="EMPTY_DOWNLOAD")
 
@@ -287,47 +310,42 @@ class DownloadWorker:
                     audio_format=target_ext,
                     job_id=job_id
                 )
-            elif len(downloaded_files) >= 2:
-                file_1 = downloaded_files[0]
-                file_2 = downloaded_files[1]
-                probe_1 = await ffmpeg_service.probe(file_1)
-                streams_1 = probe_1.get("streams", [])
-                has_video_1 = any(s.get("codec_type") == "video" for s in streams_1)
+            else:
+                # Dynamically discover which downloaded file contains video and audio streams
+                video_file = None
+                audio_file = None
+                v_codec = None
+                a_codec = None
 
-                if has_video_1:
-                    video_file, audio_file = file_1, file_2
-                    v_probe = probe_1
-                    a_probe = await ffmpeg_service.probe(file_2)
-                else:
-                    video_file, audio_file = file_2, file_1
-                    v_probe = await ffmpeg_service.probe(file_2)
-                    a_probe = probe_1
+                for f in downloaded_files:
+                    try:
+                        p = await ffmpeg_service.probe(f)
+                        streams = p.get("streams", [])
+                        f_v = next((s.get("codec_name") for s in streams if s.get("codec_type") == "video"), None)
+                        f_a = next((s.get("codec_name") for s in streams if s.get("codec_type") == "audio"), None)
+                        if f_v and not video_file:
+                            video_file = f
+                            v_codec = f_v
+                            if f_a and not a_codec:
+                                a_codec = f_a
+                        elif f_a and not audio_file and f != video_file:
+                            audio_file = f
+                            a_codec = f_a
+                    except Exception as e:
+                        logger.warning(f"Failed to probe file {f}: {e}")
 
-                v_codec = next((s.get("codec_name") for s in v_probe.get("streams", []) if s.get("codec_type") == "video"), None)
-                a_codec = next((s.get("codec_name") for s in a_probe.get("streams", []) if s.get("codec_type") == "audio"), None)
+                if not video_file:
+                    video_file = downloaded_files[0]
 
-                log_job(job_id, f"Processing separate streams: Video ({v_codec}), Audio ({a_codec})")
+                log_job(
+                    job_id,
+                    f"Processing streams: Video={video_file.name} ({v_codec}), "
+                    f"Audio={audio_file.name if audio_file else ('embedded' if a_codec else 'none')} ({a_codec})"
+                )
 
                 await ffmpeg_service.transcode_to_compatible_mp4(
                     video_path=video_file,
                     audio_path=audio_file,
-                    output_path=final_output_path,
-                    video_codec=v_codec,
-                    audio_codec=a_codec,
-                    job_id=job_id
-                )
-            else:
-                single_file = downloaded_files[0]
-                probe_single = await ffmpeg_service.probe(single_file)
-                streams = probe_single.get("streams", [])
-                v_codec = next((s.get("codec_name") for s in streams if s.get("codec_type") == "video"), None)
-                a_codec = next((s.get("codec_name") for s in streams if s.get("codec_type") == "audio"), None)
-
-                log_job(job_id, f"Processing single stream: Video ({v_codec}), Audio ({a_codec})")
-
-                await ffmpeg_service.transcode_to_compatible_mp4(
-                    video_path=single_file,
-                    audio_path=None,
                     output_path=final_output_path,
                     video_codec=v_codec,
                     audio_codec=a_codec,

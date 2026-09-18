@@ -7,10 +7,18 @@ from app.utils.logger import logger
 
 class FFmpegError(Exception):
     def __init__(self, message: str, stderr: Optional[str] = None, code: str = "PROCESSING_FAILED"):
-        super().__init__(message)
         self.stderr = stderr
         self.code = code
         self.message = message
+        if stderr and stderr.strip():
+            # Extract last non-empty line of stderr for clean user-facing error context
+            lines = [line.strip() for line in stderr.strip().splitlines() if line.strip()]
+            if lines:
+                last_line = lines[-1]
+                if len(last_line) > 120:
+                    last_line = last_line[:120] + "..."
+                self.message = f"{message} ({last_line})"
+        super().__init__(self.message)
 
 class MediaValidationError(FFmpegError):
     def __init__(self, message: str, stderr: Optional[str] = None):
@@ -107,6 +115,7 @@ class FFmpegService:
         1. H.264 video + AAC audio -> stream copy (-c copy) without re-encoding
         2. H.264 video + non-AAC audio -> copy video (-c:v copy), convert audio (-c:a aac)
         3. Non-H.264 video (VP9, AV1, etc.) -> transcode video (-c:v libx264 -pix_fmt yuv420p)
+        4. Silent video (no audio stream) -> synthesizes silent AAC stereo track to guarantee player compatibility
         """
         if not self.ffmpeg_path:
             raise FFmpegError("ffmpeg binary is not installed or not in PATH.")
@@ -118,14 +127,22 @@ class FFmpegService:
 
         video_is_h264 = vcodec_clean.startswith("avc1") or vcodec_clean.startswith("h264") or vcodec_clean.startswith("avc")
         audio_is_aac = acodec_clean.startswith("mp4a") or acodec_clean.startswith("aac")
+        has_audio = bool(audio_codec) or (audio_path and audio_path != video_path)
 
         # Build FFmpeg command (strictly limited to 1 thread for cloud container memory safety)
         cmd = [self.ffmpeg_path, "-y", "-threads", "1", "-i", str(video_path)]
+
         if audio_path and audio_path != video_path:
-            cmd.extend(["-i", str(audio_path)])
-            cmd.extend(["-map", "0:v:0", "-map", "1:a:0"])
+            cmd.extend(["-i", str(audio_path), "-map", "0:v:0?", "-map", "1:a:0?"])
+        elif has_audio:
+            cmd.extend(["-map", "0:v:0?", "-map", "0:a:0?"])
         else:
-            cmd.extend(["-map", "0:v:0", "-map", "0:a:0"])
+            # Silent video without audio stream: synthesize silent AAC track for 100% universal player compatibility
+            cmd.extend([
+                "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
+                "-map", "0:v:0?", "-map", "1:a:0?",
+                "-shortest"
+            ])
 
         # Decide video codec parameters
         if video_is_h264:
@@ -135,7 +152,9 @@ class FFmpegService:
             cmd.extend(["-c:v", "libx264", "-preset", "ultrafast", "-crf", "24", "-pix_fmt", "yuv420p"])
 
         # Decide audio codec parameters
-        if audio_is_aac:
+        if not has_audio:
+            cmd.extend(["-c:a", "aac", "-b:a", "128k"])
+        elif audio_is_aac:
             cmd.extend(["-c:a", "copy"])
         else:
             logger.info(f"Transcoding non-AAC audio ({audio_codec}) to aac (192k)")
@@ -158,40 +177,41 @@ class FFmpegService:
             self.unregister_process(job_id)
 
         if proc.returncode != 0:
-            # If stream copy failed, attempt safe fallback: full transcode
-            if video_is_h264 or audio_is_aac:
-                logger.warning(f"Stream copy failed ({proc.returncode}), attempting full re-encode fallback: {stderr.decode('utf-8', errors='replace')[:200]}")
-                fallback_cmd = [self.ffmpeg_path, "-y", "-threads", "1", "-i", str(video_path)]
-                if audio_path and audio_path != video_path:
-                    fallback_cmd.extend(["-i", str(audio_path), "-map", "0:v:0", "-map", "1:a:0"])
-                else:
-                    fallback_cmd.extend(["-map", "0:v:0", "-map", "0:a:0"])
-                fallback_cmd.extend([
-                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-pix_fmt", "yuv420p",
-                    "-c:a", "aac", "-b:a", "192k",
-                    "-movflags", "+faststart",
-                    str(output_path)
-                ])
-                fallback_proc = await asyncio.create_subprocess_exec(
-                    *fallback_cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
-                self.register_process(job_id, fallback_proc)
-                try:
-                    f_stdout, f_stderr = await fallback_proc.communicate()
-                finally:
-                    self.unregister_process(job_id)
-
-                if fallback_proc.returncode != 0:
-                    raise FFmpegError(
-                        f"FFmpeg transcode failed with code {fallback_proc.returncode}",
-                        stderr=f_stderr.decode("utf-8", errors="replace")
-                    )
+            err_output = stderr.decode("utf-8", errors="replace")
+            logger.warning(f"Conversion attempt failed ({proc.returncode}), attempting full re-encode fallback: {err_output[:200]}")
+            fallback_cmd = [self.ffmpeg_path, "-y", "-threads", "1", "-i", str(video_path)]
+            if audio_path and audio_path != video_path:
+                fallback_cmd.extend(["-i", str(audio_path), "-map", "0:v:0?", "-map", "1:a:0?"])
+            elif has_audio:
+                fallback_cmd.extend(["-map", "0:v:0?", "-map", "0:a:0?"])
             else:
+                fallback_cmd.extend([
+                    "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
+                    "-map", "0:v:0?", "-map", "1:a:0?",
+                    "-shortest"
+                ])
+
+            fallback_cmd.extend([
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-pix_fmt", "yuv420p",
+                "-c:a", "aac", "-b:a", "192k",
+                "-movflags", "+faststart",
+                str(output_path)
+            ])
+            fallback_proc = await asyncio.create_subprocess_exec(
+                *fallback_cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            self.register_process(job_id, fallback_proc)
+            try:
+                f_stdout, f_stderr = await fallback_proc.communicate()
+            finally:
+                self.unregister_process(job_id)
+
+            if fallback_proc.returncode != 0:
                 raise FFmpegError(
-                    f"FFmpeg conversion failed with code {proc.returncode}",
-                    stderr=stderr.decode("utf-8", errors="replace")
+                    f"FFmpeg transcode failed with code {fallback_proc.returncode}",
+                    stderr=f_stderr.decode("utf-8", errors="replace")
                 )
 
         if not output_path.exists() or output_path.stat().st_size == 0:

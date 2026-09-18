@@ -35,10 +35,20 @@ export function getFriendlyErrorMessage(code?: string | null, fallbackMessage?: 
   return fallbackMessage || 'An unexpected error occurred. Please try again.';
 }
 
-const DEFAULT_API_BASE_URL = (
-  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) ||
-  ''
-).replace(/\/+$/, '');
+export const getApiBaseUrl = (): string => {
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) {
+    return (import.meta.env.VITE_API_BASE_URL as string).replace(/\/+$/, '');
+  }
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host && host !== 'localhost' && host !== '127.0.0.1') {
+      return 'https://mediaflow-c83t.onrender.com';
+    }
+  }
+  return '';
+};
+
+export const DEFAULT_API_BASE_URL = getApiBaseUrl();
 
 export function getOrCreateSessionId(): string {
   if (typeof window === 'undefined') return '';

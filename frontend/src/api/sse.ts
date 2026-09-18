@@ -1,5 +1,5 @@
 import type { SSEEventData, JobStatus } from './types';
-import { getOrCreateSessionId } from './client';
+import { getOrCreateSessionId, DEFAULT_API_BASE_URL } from './client';
 
 export interface SSEOptions {
   jobId: string;
@@ -23,10 +23,7 @@ export class JobEventSubscriber {
   public connect(): void {
     if (this.closed) return;
 
-    const apiBase = (
-      (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) ||
-      ''
-    ).replace(/\/+$/, '');
+    const apiBase = DEFAULT_API_BASE_URL;
 
     const sessionId = getOrCreateSessionId();
     const query = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : '';
