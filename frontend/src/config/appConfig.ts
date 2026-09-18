@@ -10,7 +10,7 @@ export interface AppConfig {
 const configuredDomain =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_CANONICAL_DOMAIN) ||
   (typeof (globalThis as any).process !== 'undefined' && (globalThis as any).process?.env?.VITE_CANONICAL_DOMAIN) ||
-  'https://mediaflow.qd.je';
+  'https://download.strengerchat.in';
 
 export const appConfig: AppConfig = {
   brandName: 'MediaFlow',
