@@ -71,7 +71,9 @@ async def get_job_status(job_id: str, request: Request):
 
     verify_job_session(job, request)
 
-    download_url = f"/api/jobs/{job_id}/file" if job["status"] == JobStatus.COMPLETED.value else None
+    job_session = job.get("session_id")
+    sess_query = f"?session_id={job_session}" if job_session and job_session not in ("", "default") else ""
+    download_url = f"/api/jobs/{job_id}/file{sess_query}" if job["status"] == JobStatus.COMPLETED.value else None
 
     return JobResponse(
         id=job["id"],
@@ -130,6 +132,8 @@ async def job_events_stream(job_id: str, request: Request):
             return
 
         current_status = initial_job["status"]
+        job_session = initial_job.get("session_id")
+        sess_query = f"?session_id={job_session}" if job_session and job_session not in ("", "default") else ""
         initial_payload = {
             "job_id": job_id,
             "event": "status",
@@ -139,7 +143,7 @@ async def job_events_stream(job_id: str, request: Request):
             "total_bytes": initial_job.get("total_bytes"),
             "speed": initial_job.get("speed"),
             "eta": initial_job.get("eta"),
-            "download_url": f"/api/jobs/{job_id}/file" if current_status == JobStatus.COMPLETED.value else None,
+            "download_url": f"/api/jobs/{job_id}/file{sess_query}" if current_status == JobStatus.COMPLETED.value else None,
             "error_code": initial_job.get("error_code"),
             "error_message": initial_job.get("error_message"),
         }
@@ -178,7 +182,7 @@ async def job_events_stream(job_id: str, request: Request):
                     event_data["job_id"] = job_id
                     status_val = event_data.get("status")
                     if status_val == JobStatus.COMPLETED.value:
-                        event_data["download_url"] = f"/api/jobs/{job_id}/file"
+                        event_data["download_url"] = f"/api/jobs/{job_id}/file{sess_query}"
 
                     # Deduplicate progress events if status and progress haven't changed
                     new_progress = event_data.get("progress")
@@ -209,7 +213,7 @@ async def job_events_stream(job_id: str, request: Request):
 
     return EventSourceResponse(event_generator())
 
-def _schedule_post_delivery_cleanup(target_job_id: str, delay_seconds: float = 60.0):
+def _schedule_post_delivery_cleanup(target_job_id: str, delay_seconds: float = 1800.0):
     """Schedules removal of output media after a grace buffer without blocking the response."""
     async def _delayed_cleanup():
         try:

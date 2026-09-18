@@ -420,8 +420,13 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
                 fileSize={progressData?.total_bytes || job?.file_size}
                 outputFormat={outputType}
                 downloadUrl={
-                  progressData?.download_url ||
-                  (job ? api.getFileDownloadUrl(job.id) : '')
+                  (progressData?.job_id || job?.id)
+                    ? api.getFileDownloadUrl(progressData?.job_id || job?.id || '')
+                    : (progressData?.download_url
+                        ? (progressData.download_url.startsWith('http')
+                            ? progressData.download_url
+                            : `${api.getBaseUrl()}${progressData.download_url}`)
+                        : '')
                 }
                 isInstagram={isInstagram}
                 onReset={handleReset}

@@ -188,9 +188,10 @@ class ApiClient {
    * Constructs the absolute file download URL with session authentication.
    */
   getFileDownloadUrl(jobId: string): string {
+    const base = this.baseUrl || getApiBaseUrl();
     const sessionId = getOrCreateSessionId();
     const query = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : '';
-    return `${this.baseUrl}/api/jobs/${encodeURIComponent(jobId)}/file${query}`;
+    return `${base}/api/jobs/${encodeURIComponent(jobId)}/file${query}`;
   }
 }
 
