@@ -27,4 +27,6 @@ def check_system_binaries() -> Dict[str, Any]:
         "ytdlp": get_ytdlp_version(),
         "ffmpeg": get_binary_version("ffmpeg"),
         "ffprobe": get_binary_version("ffprobe"),
+        "node": shutil.which("node") or shutil.which("nodejs") or "not found",
+        "deno": shutil.which("deno") or "not found",
     }

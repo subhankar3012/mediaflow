@@ -1,5 +1,6 @@
 import asyncio
 import os
+import shutil
 import tempfile
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable
@@ -18,6 +19,24 @@ class YtDlpService:
     Encapsulates yt-dlp Python API.
     Isolates extraction, normalization, and downloading logic.
     """
+
+    @staticmethod
+    def _configure_js_runtime(ydl_opts: Dict[str, Any]):
+        """Configures the best available JavaScript runtime for solving YouTube EJS challenges."""
+        node_path = shutil.which("node") or shutil.which("nodejs")
+        deno_path = shutil.which("deno")
+        if not node_path and not deno_path:
+            for cand in ["/usr/bin/node", "/usr/local/bin/node", "/usr/bin/nodejs", "/usr/bin/deno"]:
+                if os.path.exists(cand):
+                    node_path = cand
+                    break
+        if node_path:
+            ydl_opts["js_runtimes"] = {"node": {"path": node_path}}
+        elif deno_path:
+            ydl_opts["js_runtimes"] = {"deno": {"path": deno_path}}
+        else:
+            ydl_opts["js_runtimes"] = {"node": {}}
+        ydl_opts["remote_components"] = ["ejs:github"]
 
     @staticmethod
     def _get_cookiefile() -> Optional[str]:
@@ -177,8 +196,7 @@ class YtDlpService:
                     "player_client": ["web", "web_safari"]
                 }
             }
-            ydl_opts["js_runtimes"] = {"node": {}}
-            ydl_opts["remote_components"] = ["ejs:github"]
+            self._configure_js_runtime(ydl_opts)
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -321,8 +339,7 @@ class YtDlpService:
                     "player_client": ["web", "web_safari"]
                 }
             }
-            ydl_opts["js_runtimes"] = {"node": {}}
-            ydl_opts["remote_components"] = ["ejs:github"]
+            self._configure_js_runtime(ydl_opts)
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

@@ -33,6 +33,9 @@ async def health_check():
         and storage_ok
     )
 
+    from app.services.ytdlp_service import ytdlp_service
+    cookies_loaded = bool(ytdlp_service._get_cookiefile())
+
     return {
         "status": "healthy" if all_ok else "degraded",
         "api": "ok",
@@ -42,5 +45,8 @@ async def health_check():
         "ytdlp_version": binaries["ytdlp"],
         "ffmpeg": "ok" if binaries["ffmpeg"] != "not found" else "error",
         "ffprobe": "ok" if binaries["ffprobe"] != "not found" else "error",
+        "node": binaries.get("node"),
+        "deno": binaries.get("deno"),
+        "cookies_loaded": cookies_loaded,
         "storage": "ok" if storage_ok else "error",
     }
