@@ -36,7 +36,6 @@ class YtDlpService:
             ydl_opts["js_runtimes"] = {"deno": {"path": deno_path}}
         else:
             ydl_opts["js_runtimes"] = {"node": {}}
-        ydl_opts["remote_components"] = ["ejs:github"]
 
     @staticmethod
     def _sanitize_and_validate_cookies(raw_content: str) -> Optional[str]:
@@ -258,7 +257,7 @@ class YtDlpService:
             format_note=str(format_note) if format_note else None
         )
 
-    def _build_extract_opts(self, use_cookies: bool = False) -> Dict[str, Any]:
+    def _build_extract_opts(self, use_cookies: bool = True) -> Dict[str, Any]:
         """Builds extraction options. Always enables Node.js runtime for solving JS challenges."""
         opts: Dict[str, Any] = {
             "quiet": True,
@@ -268,25 +267,15 @@ class YtDlpService:
             "socket_timeout": 25,
             "no_color": True,
             "ignore_no_formats_error": True,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["visionos", "android"]
-                }
-            },
         }
 
-        # Always configure JS runtime so yt-dlp can solve challenges on Linux/Docker
+        # Always configure Node.js runtime so yt-dlp can solve challenges on Linux/Docker
         self._configure_js_runtime(opts)
 
         if use_cookies:
             cookiefile = self._get_cookiefile()
             if cookiefile:
                 opts["cookiefile"] = cookiefile
-                opts["extractor_args"] = {
-                    "youtube": {
-                        "player_client": ["web", "web_safari"]
-                    }
-                }
 
         return opts
 
@@ -294,16 +283,13 @@ class YtDlpService:
         """
         Extracts metadata and formats without downloading media.
         Synchronous method intended to run within an executor.
-        Uses dual-strategy: visionos/android without cookies (cleanest on datacenter IPs),
-        falling back to web/web_safari with cookies if auth is required or formats are restricted.
+        Uses dual-strategy: tries with cookies first (if available), then without cookies (or vice versa).
         Guarantees that only non-empty, playable formats are returned.
         """
         import yt_dlp
 
         has_cookies = bool(self._get_cookiefile())
-        # Strategy 1: visionos/android without cookies (bypasses bot challenges for public videos)
-        # Strategy 2: web/web_safari with cookies (unlocks age-restricted and private videos)
-        strategies = [False, True] if has_cookies else [False]
+        strategies = [True, False] if has_cookies else [False]
         last_error = None
 
         for use_cookies in strategies:
@@ -357,9 +343,8 @@ class YtDlpService:
             except yt_dlp.utils.DownloadError as e:
                 err_str = str(e)
                 last_error = e
-                # Check if error indicates authentication or format issues and cookie fallback is available
-                if not use_cookies and has_cookies and any(k in err_str.lower() for k in ["sign in", "confirm your age", "bot", "private video", "login", "requested format"]):
-                    logger.info(f"Initial extraction encountered restriction ({err_str}), attempting cookie fallback...")
+                if use_cookies != strategies[-1]:
+                    logger.info(f"Extraction attempt with use_cookies={use_cookies} failed ({err_str}), falling back to alternate strategy...")
                     continue
 
                 if ("Private video" in err_str or "Sign in" in err_str) and "confirm you're not a bot" not in err_str and "bot" not in err_str.lower():
@@ -374,8 +359,7 @@ class YtDlpService:
                 if isinstance(e, YtDlpError):
                     raise
                 last_error = e
-                if not use_cookies and has_cookies:
-                    logger.info(f"Initial extraction raised {e}, attempting cookie fallback...")
+                if use_cookies != strategies[-1]:
                     continue
                 logger.exception("Unexpected error during yt-dlp metadata extraction")
                 raise YtDlpError(f"Unexpected extraction failure: {str(e)}", code="INTERNAL_ERROR")
@@ -397,7 +381,7 @@ class YtDlpService:
         format_spec: str,
         output_template: str,
         progress_hook: Callable[[Dict[str, Any]], None],
-        use_cookies: bool = False
+        use_cookies: bool = True
     ) -> Dict[str, Any]:
         """Builds download options for yt-dlp."""
         opts: Dict[str, Any] = {
@@ -414,11 +398,6 @@ class YtDlpService:
             "nopostoverwrites": True,
             "buffersize": 1024 * 1024,
             "http_chunk_size": 5 * 1024 * 1024,
-            "extractor_args": {
-                "youtube": {
-                    "player_client": ["visionos", "android"]
-                }
-            },
         }
         # Always configure JS runtime
         self._configure_js_runtime(opts)
@@ -427,11 +406,7 @@ class YtDlpService:
             cookiefile = self._get_cookiefile()
             if cookiefile:
                 opts["cookiefile"] = cookiefile
-                opts["extractor_args"] = {
-                    "youtube": {
-                        "player_client": ["web", "web_safari"]
-                    }
-                }
+
         return opts
 
     def download_media(
@@ -445,7 +420,7 @@ class YtDlpService:
         """
         Downloads the specified format using yt-dlp.
         Synchronous execution inside worker thread/executor with active cancellation support.
-        Includes automatic retry with alternate player client if initial attempt fails.
+        Includes automatic retry with alternate strategy if initial attempt fails.
         """
         import yt_dlp
 
@@ -485,7 +460,7 @@ class YtDlpService:
                 })
 
         has_cookies = bool(self._get_cookiefile())
-        strategies = [False, True] if has_cookies else [False]
+        strategies = [True, False] if has_cookies else [False]
         last_error = None
 
         for use_cookies in strategies:
@@ -507,7 +482,7 @@ class YtDlpService:
                 last_error = e
                 err_str = str(e)
                 if use_cookies != strategies[-1]:
-                    logger.warning(f"Download attempt (use_cookies={use_cookies}) failed with '{err_str}', retrying with alternate client...")
+                    logger.warning(f"Download attempt (use_cookies={use_cookies}) failed with '{err_str}', retrying with alternate strategy...")
                     continue
                 raise YtDlpError(f"Download failed: {err_str}", code="DOWNLOAD_FAILED")
             except Exception as e:
