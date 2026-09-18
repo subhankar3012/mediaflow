@@ -1,11 +1,15 @@
 FROM python:3.11-slim
 
-# Install system dependencies: FFmpeg and FFprobe
+# Stage 0: Copy official Deno binary (Deno 2.x, statically compiled, natively preferred by yt-dlp)
+COPY --from=denoland/deno:bin /deno /usr/local/bin/deno
+
+# Install system dependencies: FFmpeg, FFprobe, and Node.js 22 LTS
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
     ca-certificates \
-    nodejs \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

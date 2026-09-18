@@ -23,19 +23,24 @@ class YtDlpService:
     @staticmethod
     def _configure_js_runtime(ydl_opts: Dict[str, Any]):
         """Configures the best available JavaScript runtime for solving YouTube EJS challenges."""
-        node_path = shutil.which("node") or shutil.which("nodejs")
         deno_path = shutil.which("deno")
-        if not node_path and not deno_path:
-            for cand in ["/usr/bin/node", "/usr/local/bin/node", "/usr/bin/nodejs", "/usr/bin/deno"]:
+        node_path = shutil.which("node") or shutil.which("nodejs")
+        if not deno_path:
+            for cand in ["/usr/local/bin/deno", "/usr/bin/deno"]:
+                if os.path.exists(cand):
+                    deno_path = cand
+                    break
+        if not node_path:
+            for cand in ["/usr/bin/node", "/usr/local/bin/node", "/usr/bin/nodejs"]:
                 if os.path.exists(cand):
                     node_path = cand
                     break
-        if node_path:
-            ydl_opts["js_runtimes"] = {"node": {"path": node_path}}
-        elif deno_path:
+        if deno_path:
             ydl_opts["js_runtimes"] = {"deno": {"path": deno_path}}
+        elif node_path:
+            ydl_opts["js_runtimes"] = {"node": {"path": node_path}}
         else:
-            ydl_opts["js_runtimes"] = {"node": {}}
+            ydl_opts["js_runtimes"] = {"deno": {}}
 
     @staticmethod
     def _sanitize_and_validate_cookies(raw_content: str) -> Optional[str]:
@@ -258,7 +263,7 @@ class YtDlpService:
         )
 
     def _build_extract_opts(self, use_cookies: bool = True) -> Dict[str, Any]:
-        """Builds extraction options. Always enables Node.js runtime for solving JS challenges."""
+        """Builds extraction options. Configures JS runtime for solving JS challenges."""
         opts: Dict[str, Any] = {
             "quiet": True,
             "no_warnings": True,
@@ -266,10 +271,9 @@ class YtDlpService:
             "extract_flat": False,
             "socket_timeout": 25,
             "no_color": True,
-            "ignore_no_formats_error": True,
         }
 
-        # Always configure Node.js runtime so yt-dlp can solve challenges on Linux/Docker
+        # Always configure JS runtime so yt-dlp can solve challenges on Linux/Docker
         self._configure_js_runtime(opts)
 
         if use_cookies:
@@ -298,6 +302,7 @@ class YtDlpService:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=False)
                     if not info:
+                        last_error = YtDlpError(f"Could not extract info for {url}", code="EXTRACTION_FAILED")
                         continue
 
                     # If playlist or multi-entry, take first entry
@@ -320,6 +325,7 @@ class YtDlpService:
                     # If 0 playable formats extracted, do NOT return an empty list! Try next strategy.
                     if not normalized_formats:
                         logger.info(f"No playable formats extracted for {url} with use_cookies={use_cookies}")
+                        last_error = YtDlpError("Requested format is not available.", code="FORMAT_NOT_FOUND")
                         continue
 
                     # Sort formats: video+audio first, then highest resolution, then highest bitrate
@@ -365,6 +371,8 @@ class YtDlpService:
                 raise YtDlpError(f"Unexpected extraction failure: {str(e)}", code="INTERNAL_ERROR")
 
         if last_error:
+            if isinstance(last_error, YtDlpError):
+                raise last_error
             err_str = str(last_error)
             if ("Private video" in err_str or "Sign in" in err_str) and "confirm you're not a bot" not in err_str and "bot" not in err_str.lower():
                 raise YtDlpError("Media is private or requires authentication.", code="AUTHENTICATION_REQUIRED")

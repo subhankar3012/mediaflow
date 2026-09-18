@@ -46,9 +46,12 @@ async def health_check():
         "ffmpeg": "ok" if binaries["ffmpeg"] != "not found" else "error",
         "ffprobe": "ok" if binaries["ffprobe"] != "not found" else "error",
         "node": binaries.get("node"),
+        "node_version": binaries.get("node_version"),
         "deno": binaries.get("deno"),
+        "deno_version": binaries.get("deno_version"),
         "cookies_loaded": cookie_status["loaded"],
         "cookies_count": cookie_status["count"],
         "cookies_valid": cookie_status["valid"],
         "storage": "ok" if storage_ok else "error",
+        "build_version": "v1.0.4-deno-node22",
     }
