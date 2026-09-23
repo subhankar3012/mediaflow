@@ -66,20 +66,20 @@ class YouTubeHandler(PlatformHandler):
         if m:
             h = int(m.group(1))
             min_h = TIER_LOWER_BOUNDS.get(h, int(h * 0.8))
-            # 1. Prefer H.264 video at requested tier + AAC audio
-            # 2. Prefer H.264 video at requested tier + best audio
-            # 3. Best video at requested tier (e.g. VP9/AV1 for 4K/1080p) + AAC audio
-            # 4. Best video at requested tier + best audio
-            # 5. Combined stream at requested tier
-            # 6. Fallback: best video at height <= h + best audio
+            # 1. Horizontal matching (height) & Vertical/Shorts matching (width)
+            # 2. Prefer H.264 video at requested tier + AAC audio
+            # 3. Best video at requested tier + best audio
+            # 4. Fallbacks to bestvideo+bestaudio/best
             return (
                 f"bestvideo[height<={h}][height>{min_h}][vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
-                f"bestvideo[height<={h}][height>{min_h}][vcodec^=avc1]+bestaudio/"
-                f"bestvideo[height<={h}][height>{min_h}]+bestaudio[acodec^=mp4a]/"
+                f"bestvideo[width<={h}][width>{min_h}][vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
                 f"bestvideo[height<={h}][height>{min_h}]+bestaudio/"
+                f"bestvideo[width<={h}][width>{min_h}]+bestaudio/"
                 f"best[height<={h}][height>{min_h}]/"
+                f"best[width<={h}][width>{min_h}]/"
                 f"bestvideo[height<={h}]+bestaudio/"
-                f"best[height<={h}]/best"
+                f"bestvideo[width<={h}]+bestaudio/"
+                f"best[height<={h}]/best[width<={h}]/bestvideo+bestaudio/best"
             )
 
         if str(format_id).lower() in ("best", "default"):

@@ -52,6 +52,8 @@ async def health_check():
         "cookies_loaded": cookie_status["loaded"],
         "cookies_count": cookie_status["count"],
         "cookies_valid": cookie_status["valid"],
+        "cookies_youtube": cookie_status.get("has_youtube", False),
+        "cookies_instagram": cookie_status.get("has_instagram", False),
         "storage": "ok" if storage_ok else "error",
-        "build_version": "v1.1.0-robust-yt-extraction",
+        "build_version": "v1.1.1-shorts-and-cookie-domain-check",
     }

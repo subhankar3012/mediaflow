@@ -155,15 +155,33 @@ class YtDlpService:
         """Returns structured status of loaded cookies for health inspections."""
         cookiefile = cls._get_cookiefile()
         if not cookiefile:
-            return {"loaded": False, "count": 0, "valid": False}
+            return {
+                "loaded": False,
+                "count": 0,
+                "valid": False,
+                "has_youtube": False,
+                "has_instagram": False,
+            }
         try:
             import http.cookiejar
             jar = http.cookiejar.MozillaCookieJar(cookiefile)
             jar.load(ignore_discard=True, ignore_expires=True)
             count = len(jar)
-            return {"loaded": True, "count": count, "valid": count > 0}
+            return {
+                "loaded": True,
+                "count": count,
+                "valid": count > 0,
+                "has_youtube": cls._has_domain_cookies("youtube.com"),
+                "has_instagram": cls._has_domain_cookies("instagram.com"),
+            }
         except Exception:
-            return {"loaded": True, "count": 0, "valid": False}
+            return {
+                "loaded": True,
+                "count": 0,
+                "valid": False,
+                "has_youtube": cls._has_domain_cookies("youtube.com"),
+                "has_instagram": cls._has_domain_cookies("instagram.com"),
+            }
 
     @classmethod
     def _has_domain_cookies(cls, domain: str) -> bool:
@@ -564,12 +582,6 @@ class YtDlpService:
             "buffersize": 1024 * 1024,
             "http_chunk_size": 5 * 1024 * 1024,
         }
-        if is_youtube:
-            opts["extractor_args"] = {
-                "youtube": {
-                    "player_client": ["android", "visionos", "ios"]
-                }
-            }
         # Always configure JS runtime
         self._configure_js_runtime(opts)
 
@@ -634,7 +646,7 @@ class YtDlpService:
         has_cookies = bool(self._get_cookiefile())
         has_yt_cookies = self._has_domain_cookies("youtube.com")
         if is_youtube:
-            strategies = [False, True] if (has_cookies and has_yt_cookies) else [False]
+            strategies = [True, False] if (has_cookies and has_yt_cookies) else [False]
         else:
             strategies = [True, False] if has_cookies else [False]
         last_error = None
