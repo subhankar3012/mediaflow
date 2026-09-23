@@ -305,18 +305,9 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
     }
   };
 
-  // 4b. Gallery ZIP Download Trigger
+  // 4b. Gallery ZIP Download Trigger - No redirect on download buttons
   const handleDownloadZip = async (selectedIndices: number[]) => {
     if (!analysis) return;
-
-    // Trigger instant Adsterra direct link in background new tab on user click
-    if (appConfig.enableAds && appConfig.adsterraDirectLink) {
-      try {
-        window.open(appConfig.adsterraDirectLink, '_blank', 'noopener,noreferrer');
-      } catch (err) {
-        console.warn('Adsterra direct link trigger:', err);
-      }
-    }
 
     setStep('downloading');
     setError(null);
@@ -373,23 +364,13 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
     }
   };
 
-  // 5. User Click on Main Download CTA Button - Instant ad & zero 3s delay
+  // 5. User Click on Main Download CTA Button - No redirect on download button (only standard popups)
   const handleDownloadClick = () => {
-    // Trigger instant Adsterra direct link in background new tab on user click
-    if (appConfig.enableAds && appConfig.adsterraDirectLink) {
-      try {
-        window.open(appConfig.adsterraDirectLink, '_blank', 'noopener,noreferrer');
-      } catch (err) {
-        console.warn('Adsterra direct link trigger:', err);
-      }
-    }
-
     if (outputType === 'thumbnail' || analysis?.media_type === 'image') {
       executeDownloadJob();
       return;
     }
 
-    // Immediately execute download job without waiting 3 seconds
     if (appConfig.enableInterstitial) {
       setShowInterstitial(true);
     } else {
@@ -535,7 +516,14 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
                     {analysis.thumbnail && outputType !== 'thumbnail' && !isInstagram && analysis.media_type !== 'image' && (
                       <button
                         type="button"
-                        onClick={() => handleOutputTypeChange('thumbnail')}
+                        onClick={() => {
+                          if (appConfig.enableAds && appConfig.adsterraDirectLink) {
+                            try {
+                              window.open(appConfig.adsterraDirectLink, '_blank', 'noopener,noreferrer');
+                            } catch {}
+                          }
+                          handleOutputTypeChange('thumbnail');
+                        }}
                         className="btn-cover-art-secondary"
                         title="Switch to Cover Art"
                       >

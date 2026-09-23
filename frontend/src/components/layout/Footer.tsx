@@ -77,7 +77,14 @@ export const Footer: React.FC = () => {
               <li>
                 <button
                   type="button"
-                  onClick={() => window.dispatchEvent(new CustomEvent('mediaflow:open-app-modal'))}
+                  onClick={() => {
+                    if (appConfig.enableAds && appConfig.adsterraDirectLink) {
+                      try {
+                        window.open(appConfig.adsterraDirectLink, '_blank', 'noopener,noreferrer');
+                      } catch {}
+                    }
+                    window.dispatchEvent(new CustomEvent('mediaflow:open-app-modal'));
+                  }}
                   style={{
                     background: 'none',
                     border: 'none',

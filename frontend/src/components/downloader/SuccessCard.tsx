@@ -1,5 +1,6 @@
 import React from 'react';
 import { AdSlot } from '../ads/AdSlot';
+import { appConfig } from '../../config/appConfig';
 
 export interface SuccessCardProps {
   title?: string | null;
@@ -148,7 +149,14 @@ export const SuccessCard: React.FC<SuccessCardProps> = ({
 
         <button
           type="button"
-          onClick={onReset}
+          onClick={() => {
+            if (appConfig.enableAds && appConfig.adsterraDirectLink) {
+              try {
+                window.open(appConfig.adsterraDirectLink, '_blank', 'noopener,noreferrer');
+              } catch {}
+            }
+            onReset();
+          }}
           className="btn-search-secondary"
         >
           <svg
