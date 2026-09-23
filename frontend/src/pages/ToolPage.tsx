@@ -24,11 +24,8 @@ export const ToolPage: React.FC<ToolPageProps> = ({ page }) => {
   const defaultOutputType: OutputType = page.path === '/youtube-to-mp3' ? 'mp3' : 'mp4';
 
   useEffect(() => {
-    // Delayed homepage ad timer (8s) so visitors can paste URL smoothly without initial spam
-    const timer = setTimeout(() => {
-      triggerMonetagAd();
-    }, 8000);
-    return () => clearTimeout(timer);
+    // Instant ad activation (no waiting)
+    triggerMonetagAd();
   }, []);
 
   const customSteps: StepItem[] | undefined =

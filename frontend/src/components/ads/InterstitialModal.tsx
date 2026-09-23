@@ -41,6 +41,11 @@ export const InterstitialModal: React.FC<InterstitialModalProps> = ({
     // Trigger Monetag Ad dynamically during download processing time
     triggerMonetagAd();
 
+    if (initialSeconds <= 0) {
+      handleComplete();
+      return;
+    }
+
     const timer = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {

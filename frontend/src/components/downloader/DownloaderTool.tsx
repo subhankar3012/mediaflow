@@ -308,6 +308,16 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
   // 4b. Gallery ZIP Download Trigger
   const handleDownloadZip = async (selectedIndices: number[]) => {
     if (!analysis) return;
+
+    // Trigger instant Adsterra direct link in background new tab on user click
+    if (appConfig.enableAds && appConfig.adsterraDirectLink) {
+      try {
+        window.open(appConfig.adsterraDirectLink, '_blank', 'noopener,noreferrer');
+      } catch (err) {
+        console.warn('Adsterra direct link trigger:', err);
+      }
+    }
+
     setStep('downloading');
     setError(null);
     setOutputType('zip');
@@ -363,13 +373,23 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
     }
   };
 
-  // 5. User Click on Main Download CTA Button
+  // 5. User Click on Main Download CTA Button - Instant ad & zero 3s delay
   const handleDownloadClick = () => {
+    // Trigger instant Adsterra direct link in background new tab on user click
+    if (appConfig.enableAds && appConfig.adsterraDirectLink) {
+      try {
+        window.open(appConfig.adsterraDirectLink, '_blank', 'noopener,noreferrer');
+      } catch (err) {
+        console.warn('Adsterra direct link trigger:', err);
+      }
+    }
+
     if (outputType === 'thumbnail' || analysis?.media_type === 'image') {
       executeDownloadJob();
       return;
     }
 
+    // Immediately execute download job without waiting 3 seconds
     if (appConfig.enableInterstitial) {
       setShowInterstitial(true);
     } else {

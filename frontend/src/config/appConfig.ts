@@ -39,8 +39,8 @@ export const appConfig: AppConfig = {
     nativeContainerId: 'container-feae44703559111e89156a6f6e873e79',
     nativeScriptSrc: 'https://pl31478900.profitableratecpmnetwork.com/feae44703559111e89156a6f6e873e79/invoke.js',
   },
-  enableInterstitial: true,
-  interstitialCountdownSeconds: 3,
+  enableInterstitial: false,
+  interstitialCountdownSeconds: 0,
 };
 
 export function getCanonicalUrl(path: string, domain: string = appConfig.canonicalDomain): string {
