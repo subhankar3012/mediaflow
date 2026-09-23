@@ -3,6 +3,7 @@ export interface AppConfig {
   brandTagline: string;
   canonicalDomain: string;
   enableAds: boolean;
+  adSenseClientId: string;
   enableInterstitial: boolean;
   interstitialCountdownSeconds: number;
 }
@@ -17,6 +18,7 @@ export const appConfig: AppConfig = {
   brandTagline: 'Download YouTube & Instagram Videos Free Without Watermark',
   canonicalDomain: configuredDomain.replace(/\/+$/, ''),
   enableAds: true, // Reserves space and provides ad containers without deceptive UI
+  adSenseClientId: 'ca-pub-9604961997726378',
   enableInterstitial: false, // Configurable single-step preparation flow; off by default for clean UX
   interstitialCountdownSeconds: 3,
 };

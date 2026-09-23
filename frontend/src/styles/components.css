@@ -2116,6 +2116,11 @@
   margin: var(--space-6) auto;
 }
 
+.editorial-ad-slot:empty {
+  display: none;
+  margin: 0;
+}
+
 .editorial-ad-inner {
   border: 1px dashed rgba(203, 213, 225, 0.8);
   border-radius: var(--radius-lg);
