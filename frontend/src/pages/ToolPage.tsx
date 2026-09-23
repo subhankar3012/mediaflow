@@ -117,6 +117,11 @@ export const ToolPage: React.FC<ToolPageProps> = ({ page }) => {
       {/* Visual How It Works */}
       <HowItWorks steps={customSteps} platform={page.platform} />
 
+      {/* Ad after How It Works */}
+      <div className="site-container-tool">
+        <AdSlot slotId="ad-after-howitworks" slotType="banner468" label="Sponsored Placement" />
+      </div>
+
       {/* Technical Specifications Comparison Table */}
       <TechnicalSpecsTable
         platform={page.platform}
@@ -124,10 +129,15 @@ export const ToolPage: React.FC<ToolPageProps> = ({ page }) => {
         description={page.specsDescription}
       />
 
+      {/* Sponsored Recommendations after Specs */}
+      <div className="site-container-tool">
+        <AdSlot slotId="ad-after-specs" slotType="native" label="Sponsored Recommendations" />
+      </div>
+
       {/* Device-Specific OS Guidance (iOS Safari, Android, Desktop) */}
       <DeviceGuidance />
 
-      {/* Middle Ad */}
+      {/* Ad after Device Guidance */}
       <div className="site-container-tool">
         <AdSlot slotId="ad-between-tool" slotType="between" label="Sponsored Placement" />
       </div>
@@ -137,18 +147,28 @@ export const ToolPage: React.FC<ToolPageProps> = ({ page }) => {
         <FeatureGrid features={page.features} />
       )}
 
+      {/* High-engagement Rectangle Ad after Feature Grid */}
+      <div className="site-container-tool">
+        <AdSlot slotId="ad-after-features" slotType="rectangle" label="Sponsored Placement" />
+      </div>
+
       {/* Accordion FAQ */}
       {page.faqs && page.faqs.length > 0 && (
         <FAQSection faqs={page.faqs} />
       )}
 
-      {/* Bottom Ad */}
+      {/* Bottom Ad after FAQ */}
       <div className="site-container-tool">
         <AdSlot slotId="ad-bottom-leaderboard" slotType="bottom" label="Sponsored Placement" />
       </div>
 
       {/* Specialized Converters Grid */}
       <RelatedTools currentPath={page.path} />
+
+      {/* Ad after Related Tools (before footer) */}
+      <div className="site-container-tool">
+        <AdSlot slotId="ad-after-related" slotType="banner468" label="Sponsored Placement" />
+      </div>
     </PlatformThemeProvider>
   );
 };

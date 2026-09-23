@@ -13,6 +13,7 @@ import { GalleryView } from './GalleryView';
 import { SkeletonCard } from './SkeletonCard';
 import { ErrorAlert } from './ErrorAlert';
 import { InterstitialModal } from '../ads/InterstitialModal';
+import { AdSlot } from '../ads/AdSlot';
 
 export interface DownloaderToolProps {
   defaultOutputType?: OutputType;
@@ -435,6 +436,9 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
       {step === 'analyzing' && (
         <div ref={resultCardRef} className="downloader-slide-target">
           <SkeletonCard />
+          <div style={{ marginTop: '0.875rem', width: '100%', display: 'flex', justifyContent: 'center' }}>
+            <AdSlot slotId="ad-analyzing-banner" slotType="processing" label="Sponsored Placement" />
+          </div>
         </div>
       )}
 
@@ -483,46 +487,53 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
 
               {/* Primary Action Button Row */}
               {step !== 'downloading' && (
-                <div className="downloader-cta-row">
-                  <button
-                    type="button"
-                    onClick={handleDownloadClick}
-                    className="btn-download-primary"
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <polyline points="7 10 12 15 17 10" />
-                      <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                    <span>{getDownloadButtonLabel()}</span>
-                  </button>
-
-                  {analysis.thumbnail && outputType !== 'thumbnail' && !isInstagram && analysis.media_type !== 'image' && (
+                <>
+                  <div className="downloader-cta-row">
                     <button
                       type="button"
-                      onClick={() => handleOutputTypeChange('thumbnail')}
-                      className="btn-cover-art-secondary"
-                      title="Switch to Cover Art"
+                      onClick={handleDownloadClick}
+                      className="btn-download-primary"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <polyline points="21 15 16 10 5 21" />
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
                       </svg>
-                      <span>Cover Art</span>
+                      <span>{getDownloadButtonLabel()}</span>
                     </button>
-                  )}
-                </div>
+
+                    {analysis.thumbnail && outputType !== 'thumbnail' && !isInstagram && analysis.media_type !== 'image' && (
+                      <button
+                        type="button"
+                        onClick={() => handleOutputTypeChange('thumbnail')}
+                        className="btn-cover-art-secondary"
+                        title="Switch to Cover Art"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                          <circle cx="8.5" cy="8.5" r="1.5" />
+                          <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                        <span>Cover Art</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Banner Ad below format selection and CTA */}
+                  <div style={{ marginTop: '0.875rem', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                    <AdSlot slotId="ad-analyzed-cta" slotType="banner468" label="Sponsored Placement" />
+                  </div>
+                </>
               )}
             </>
           )}

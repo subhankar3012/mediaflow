@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { JobResponse, SSEEventData, JobStatus } from '../../api/types';
+import { AdSlot } from '../ads/AdSlot';
 
 export interface ProgressCardProps {
   job?: JobResponse | SSEEventData;
@@ -138,6 +139,11 @@ export const ProgressCard: React.FC<ProgressCardProps> = ({
           <span className="progress-ticker-text">{REASSURING_HINTS[hintIndex]}</span>
         </div>
         <span className="progress-note-sub">Please keep this tab open until your file is ready.</span>
+      </div>
+
+      {/* Processing Time Sponsored Banner Ad */}
+      <div className="progress-sponsored-slot" style={{ marginTop: 'var(--space-3)', width: '100%', display: 'flex', justifyContent: 'center' }}>
+        <AdSlot slotId="ad-processing-banner" slotType="processing" label="Sponsored Placement" />
       </div>
 
       {onCancel && (

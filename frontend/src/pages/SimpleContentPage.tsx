@@ -132,6 +132,11 @@ export const SimpleContentPage: React.FC<SimpleContentPageProps> = ({ page }) =>
           </article>
         )}
 
+        {/* Content Middle Sponsored Placement */}
+        <div style={{ margin: '2rem 0', width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <AdSlot slotId="ad-content-middle" slotType="rectangle" label="Sponsored Placement" />
+        </div>
+
         {page.path === '/faq' && (
           <div>
             <FAQSection faqs={page.faqs} />

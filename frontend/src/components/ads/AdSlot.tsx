@@ -1,17 +1,37 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { appConfig } from '../../config/appConfig';
 import { AdsterraBanner } from './AdsterraBanner';
 
 export interface AdSlotProps {
-  position?: 'top' | 'between' | 'content' | 'bottom';
-  slotType?: 'top' | 'between' | 'content' | 'bottom' | string;
+  position?:
+    | 'top'
+    | 'between'
+    | 'content'
+    | 'bottom'
+    | 'processing'
+    | 'banner468'
+    | 'rectangle'
+    | 'native'
+    | 'skyscraper'
+    | string;
+  slotType?:
+    | 'top'
+    | 'between'
+    | 'content'
+    | 'bottom'
+    | 'processing'
+    | 'banner468'
+    | 'rectangle'
+    | 'native'
+    | 'skyscraper'
+    | string;
   slotId?: string;
   adUnitId?: string;
   label?: string;
   className?: string;
 }
 
-export const AdSlot: React.FC<AdSlotProps> = ({
+export const AdSlot: React.FC<AdSlotProps> = memo(({
   position,
   slotType,
   slotId,
@@ -30,4 +50,4 @@ export const AdSlot: React.FC<AdSlotProps> = ({
       className={className}
     />
   );
-};
+});

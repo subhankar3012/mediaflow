@@ -1,4 +1,5 @@
 import React from 'react';
+import { AdSlot } from '../ads/AdSlot';
 
 export interface SuccessCardProps {
   title?: string | null;
@@ -166,6 +167,11 @@ export const SuccessCard: React.FC<SuccessCardProps> = ({
           </svg>
           <span>Search Another</span>
         </button>
+      </div>
+
+      {/* Sponsored Banner on Completed Screen */}
+      <div style={{ marginTop: '1.25rem', width: '100%', display: 'flex', justifyContent: 'center' }}>
+        <AdSlot slotId="ad-success-banner" slotType="banner468" label="Sponsored Placement" />
       </div>
     </div>
   );
