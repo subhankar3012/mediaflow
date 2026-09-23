@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { PageSEO } from '../config/seoContent';
 import type { OutputType } from '../api/types';
 import type { StepItem } from '../components/seo/HowItWorks';
@@ -14,6 +14,7 @@ import { AnimatedHeroTitle } from '../components/hero/AnimatedHeroTitle';
 import { Breadcrumbs } from '../components/seo/Breadcrumbs';
 import { TechnicalSpecsTable } from '../components/seo/TechnicalSpecsTable';
 import { DeviceGuidance } from '../components/seo/DeviceGuidance';
+import { triggerMonetagAd } from '../utils/monetag';
 
 export interface ToolPageProps {
   page: PageSEO;
@@ -21,6 +22,14 @@ export interface ToolPageProps {
 
 export const ToolPage: React.FC<ToolPageProps> = ({ page }) => {
   const defaultOutputType: OutputType = page.path === '/youtube-to-mp3' ? 'mp3' : 'mp4';
+
+  useEffect(() => {
+    // Delayed homepage ad timer (8s) so visitors can paste URL smoothly without initial spam
+    const timer = setTimeout(() => {
+      triggerMonetagAd();
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const customSteps: StepItem[] | undefined =
     page.howItWorks && page.howItWorks.length === 3

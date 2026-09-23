@@ -19,7 +19,7 @@ export const appConfig: AppConfig = {
   canonicalDomain: configuredDomain.replace(/\/+$/, ''),
   enableAds: true, // Reserves space and provides ad containers without deceptive UI
   adSenseClientId: 'ca-pub-9604961997726378',
-  enableInterstitial: false, // Configurable single-step preparation flow; off by default for clean UX
+  enableInterstitial: true, // Configurable preparation flow active during download processing
   interstitialCountdownSeconds: 3,
 };
 
