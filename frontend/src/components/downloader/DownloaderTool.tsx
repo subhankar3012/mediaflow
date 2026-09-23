@@ -132,6 +132,10 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
     if (!formats || formats.length === 0) return '';
     if (type === 'mp4') {
       const videoFormats = formats.filter((f) => f.has_video);
+      const fmt1080 = videoFormats.find((f) => f.height === 1080);
+      if (fmt1080) return fmt1080.format_id;
+      const fmt720 = videoFormats.find((f) => f.height === 720);
+      if (fmt720) return fmt720.format_id;
       return videoFormats[0]?.format_id || formats[0].format_id;
     } else if (type === 'mp3') {
       const audioFormats = formats.filter((f) => f.has_audio && !f.has_video);

@@ -31,9 +31,9 @@ export interface PageSEO {
 export const SEO_PAGES: Record<string, PageSEO> = {
   '/': {
     path: '/',
-    title: 'Free Online Media Downloader - YouTube & Instagram MP4, MP3 | MediaFlow',
-    metaDescription: 'Download high quality videos and audio from YouTube and Instagram for free. Fast, secure, and mobile-friendly with MP4, MP3, and thumbnail options.',
-    h1: 'Online Video & Audio Downloader',
+    title: 'MediaFlow — Free Online Video & Audio Downloader for YouTube & Instagram',
+    metaDescription: 'Download YouTube and Instagram videos in high-definition MP4 or extract crystal-clear MP3 audio for free. Fast, secure, and mobile-friendly with no registration required.',
+    h1: 'Free Online Video & Audio Downloader for YouTube & Instagram',
     subtitle: 'Paste any YouTube or Instagram link to download high-speed MP4 video, MP3 audio, or full-resolution thumbnails with zero quality loss.',
     platform: 'all',
     placeholder: 'Paste YouTube or Instagram link here (e.g. https://www.youtube.com/watch?v=...)',
@@ -71,7 +71,7 @@ export const SEO_PAGES: Record<string, PageSEO> = {
     ],
     faqs: [
       {
-        question: 'Is this media downloader completely free to use?',
+        question: 'Is this video and audio downloader completely free to use?',
         answer: 'Yes! MediaFlow is 100% free with no limits on personal downloads and requires no account registration or payment details.'
       },
       {
@@ -102,7 +102,7 @@ export const SEO_PAGES: Record<string, PageSEO> = {
 
   '/youtube-video-downloader': {
     path: '/youtube-video-downloader',
-    title: 'YouTube Video Downloader - Download YouTube Videos in HD MP4 & MP3 | MediaFlow',
+    title: 'MediaFlow — YouTube Video Downloader',
     metaDescription: 'Download YouTube videos in 1080p, 720p, or 360p MP4 and high-bitrate MP3 audio. Free, fast, and no registration required.',
     h1: 'YouTube Video Downloader',
     subtitle: 'Save your favorite YouTube videos and Shorts in high definition MP4 or audio MP3 format effortlessly.',
@@ -169,7 +169,7 @@ export const SEO_PAGES: Record<string, PageSEO> = {
 
   '/youtube-to-mp3': {
     path: '/youtube-to-mp3',
-    title: 'YouTube to MP3 Converter - Free High Quality Audio Downloader | MediaFlow',
+    title: 'MediaFlow — YouTube to MP3 Converter',
     metaDescription: 'Convert and download YouTube videos to high-bitrate MP3 audio files for free. Fast conversion with crystal-clear audio quality on all devices.',
     h1: 'YouTube to MP3 Converter',
     subtitle: 'Extract crystal-clear MP3 audio from any YouTube music video, podcast, lecture, or interview in seconds.',
@@ -236,9 +236,9 @@ export const SEO_PAGES: Record<string, PageSEO> = {
 
   '/youtube-to-mp4': {
     path: '/youtube-to-mp4',
-    title: 'YouTube to MP4 Downloader - Download 1080p & 720p HD MP4 | MediaFlow',
+    title: 'MediaFlow — YouTube to MP4 Converter',
     metaDescription: 'Convert and save YouTube videos as MP4 files in 1080p, 720p, and standard definition. Free, fast and compatible with all media players.',
-    h1: 'YouTube to MP4 Downloader',
+    h1: 'YouTube to MP4 Converter',
     subtitle: 'Download YouTube videos in universal MP4 format with perfectly synchronized video and audio playback.',
     platform: 'youtube',
     placeholder: 'Paste YouTube video link to download MP4...',
@@ -299,9 +299,9 @@ export const SEO_PAGES: Record<string, PageSEO> = {
 
   '/instagram-downloader': {
     path: '/instagram-downloader',
-    title: 'Instagram Video & Photo Downloader - Save IG Videos, Reels & Posts | MediaFlow',
+    title: 'MediaFlow — Instagram Video Downloader',
     metaDescription: 'Download Instagram videos, Reels, and photos in high quality. Fast, safe, free, and works on all desktop and mobile browsers.',
-    h1: 'Instagram Video & Photo Downloader',
+    h1: 'Instagram Video Downloader',
     subtitle: 'Save public Instagram videos, Reels, IGTV, and high-resolution photos effortlessly to your device.',
     platform: 'instagram',
     placeholder: 'Paste Instagram post or reel link (e.g. https://www.instagram.com/reel/...)',
@@ -365,7 +365,7 @@ export const SEO_PAGES: Record<string, PageSEO> = {
 
   '/instagram-reels-downloader': {
     path: '/instagram-reels-downloader',
-    title: 'Instagram Reels Downloader - Save IG Reels in HD MP4 with Audio | MediaFlow',
+    title: 'MediaFlow — Instagram Reels Downloader',
     metaDescription: 'Download Instagram Reels in high definition MP4 with original sound. Fast, easy, and free on iPhone, Android, and PC.',
     h1: 'Instagram Reels Downloader',
     subtitle: 'Save trending Instagram Reels with crystal-clear audio to watch offline or share with friends.',
@@ -428,7 +428,7 @@ export const SEO_PAGES: Record<string, PageSEO> = {
 
   '/faq': {
     path: '/faq',
-    title: 'Frequently Asked Questions - MediaFlow Downloader Help & FAQs',
+    title: 'MediaFlow — FAQ & Downloader Guide',
     metaDescription: 'Get answers to common questions about using MediaFlow to download YouTube and Instagram videos, MP3 audio, file formats, and troubleshooting.',
     h1: 'Frequently Asked Questions',
     subtitle: 'Find comprehensive answers to common questions about downloading video and audio files with MediaFlow.',
@@ -480,10 +480,10 @@ export const SEO_PAGES: Record<string, PageSEO> = {
 
   '/about': {
     path: '/about',
-    title: 'About MediaFlow - Fast & High-Definition Media Downloader',
+    title: 'MediaFlow — About Us',
     metaDescription: 'Learn about MediaFlow, our mission to provide the fastest, cleanest, and most reliable video and audio downloader for the modern web.',
     h1: 'About MediaFlow',
-    subtitle: 'A high-performance media extraction engine built for speed, simplicity, and strict user privacy.',
+    subtitle: 'A high-performance video and audio extraction engine built for speed, simplicity, and strict user privacy.',
     platform: 'all',
     placeholder: 'Paste any video URL to start downloading...',
     breadcrumbs: [
@@ -502,7 +502,7 @@ export const SEO_PAGES: Record<string, PageSEO> = {
 
   '/contact': {
     path: '/contact',
-    title: 'Contact Support & Feedback - MediaFlow Downloader',
+    title: 'MediaFlow — Contact Support',
     metaDescription: 'Get in touch with the MediaFlow team for customer support, feature suggestions, bug reports, or copyright DMCA inquiries.',
     h1: 'Contact & Support',
     subtitle: 'Have a question, feedback, or DMCA inquiry? Our team is here to assist you.',
@@ -524,7 +524,7 @@ export const SEO_PAGES: Record<string, PageSEO> = {
 
   '/privacy-policy': {
     path: '/privacy-policy',
-    title: 'Privacy Policy - MediaFlow Media Downloader',
+    title: 'MediaFlow — Privacy Policy',
     metaDescription: 'Read our transparent Privacy Policy. Learn how MediaFlow protects your data and privacy with zero permanent tracking and auto-purging files.',
     h1: 'Privacy Policy',
     subtitle: 'Our commitment to protecting your privacy, data security, and digital confidentiality.',
@@ -546,7 +546,7 @@ export const SEO_PAGES: Record<string, PageSEO> = {
 
   '/terms': {
     path: '/terms',
-    title: 'Terms of Service & Copyright Disclaimer - MediaFlow Downloader',
+    title: 'MediaFlow — Terms of Service',
     metaDescription: 'Review the Terms of Service governing your use of MediaFlow, personal use conditions, and intellectual property disclaimers.',
     h1: 'Terms of Service',
     subtitle: 'Terms and conditions governing the lawful, personal use of the MediaFlow service.',

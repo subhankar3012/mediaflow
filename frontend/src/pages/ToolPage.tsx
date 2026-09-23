@@ -47,11 +47,20 @@ export const ToolPage: React.FC<ToolPageProps> = ({ page }) => {
       {/* Editorial Centered Hero Section */}
       <section className="hero-editorial-section">
         <div className="site-container-narrow text-center">
-          {/* Top Live Badge */}
-          <div className="hero-live-badge font-mono">
-            <span className="live-dot" />
-            <span>Direct Media Extraction • Zero Loss</span>
-          </div>
+          {/* Top Live / Brand Badge */}
+          {page.path === '/' ? (
+            <div className="hero-brand-badge font-mono">
+              <img src="/brand-icon.png" alt="" width="18" height="18" className="hero-brand-badge-img" />
+              <span className="hero-brand-badge-title">MediaFlow</span>
+              <span className="meta-sep">•</span>
+              <span className="hero-brand-badge-tag">Free Online Downloader</span>
+            </div>
+          ) : (
+            <div className="hero-live-badge font-mono">
+              <span className="live-dot" />
+              <span>Direct Media Extraction • Zero Loss</span>
+            </div>
+          )}
 
           {/* Centered Editorial H1 */}
           {page.path === '/' ? (

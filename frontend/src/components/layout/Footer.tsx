@@ -75,6 +75,26 @@ export const Footer: React.FC = () => {
                 <Link to="/terms">Terms of Service</Link>
               </li>
               <li>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('mediaflow:open-app-modal'))}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    font: 'inherit',
+                    color: '#10b981',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontWeight: 600,
+                  }}
+                >
+                  <span>📱 Download Android App</span>
+                </button>
+              </li>
+              <li>
                 <Link to="/contact">Contact Support</Link>
               </li>
             </ul>

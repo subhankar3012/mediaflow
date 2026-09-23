@@ -33,23 +33,40 @@ export function generateJsonLdGraph(options: GenerateSeoOptions, canonicalDomain
   const canonicalUrl = getCanonicalUrl(options.canonicalPath, canonicalDomain);
   const graph: any[] = [];
 
-  // 1. WebSite Schema (always present)
+  // 1. WebSite Schema (Google Site Name signals)
   graph.push({
     '@type': 'WebSite',
     '@id': `${canonicalDomain}/#website`,
     url: canonicalDomain,
     name: appConfig.brandName,
+    alternateName: ['MediaFlow Downloader', 'MediaFlow App'],
     description: appConfig.brandTagline,
     inLanguage: 'en',
   });
 
-  // 2. WebApplication Schema for tool pages (genuine free pricing, NO fake ratings)
+  // 2. Organization Schema (authentic brand signals)
+  graph.push({
+    '@type': 'Organization',
+    '@id': `${canonicalDomain}/#organization`,
+    name: appConfig.brandName,
+    url: canonicalDomain,
+    logo: {
+      '@type': 'ImageObject',
+      url: `${canonicalDomain}/brand-icon.png`,
+    },
+  });
+
+  // 3. WebApplication Schema for tool pages (genuine free pricing, NO fake ratings)
   if (options.isToolPage || options.canonicalPath === '/' || options.canonicalPath.startsWith('/youtube-') || options.canonicalPath.startsWith('/instagram-')) {
+    const appName = options.canonicalPath === '/'
+      ? 'MediaFlow — Free Online Video & Audio Downloader'
+      : options.title.split(' — ')[1] || options.title;
+
     graph.push({
       '@type': 'WebApplication',
       '@id': `${canonicalUrl}/#webapp`,
       url: canonicalUrl,
-      name: options.title.split(' - ')[0].split(' | ')[0],
+      name: appName,
       applicationCategory: 'MultimediaApplication',
       operatingSystem: 'All',
       browserRequirements: 'Requires JavaScript. Requires HTML5.',

@@ -10,7 +10,7 @@ export interface AnimatedHeroTitleProps {
 }
 
 const DEFAULT_PHRASES: string[] = [
-  'Online Video & Audio Downloader',
+  'Free Online Video & Audio Downloader for YouTube & Instagram',
   'YouTube Video Downloader',
   'YouTube to MP3 Converter',
   'Instagram Reels Downloader',
@@ -81,7 +81,7 @@ export const AnimatedHeroTitle: React.FC<AnimatedHeroTitleProps> = ({
   deletingSpeed = 32,
   pauseDuration = 2300,
   className = '',
-  fallbackTitle = 'Online Video & Audio Downloader',
+  fallbackTitle = 'Free Online Video & Audio Downloader for YouTube & Instagram',
 }) => {
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState('');

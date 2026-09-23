@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from '../../router/Link';
 import { useRouter } from '../../router/Router';
 import { appConfig } from '../../config/appConfig';
+import { AppBanner } from './AppBanner';
+import { AppDownloadModal } from './AppDownloadModal';
 
 const TOOL_ROUTES = [
   { path: '/youtube-video-downloader', label: 'YouTube Video Downloader', badge: '1080p / 4K' },
@@ -15,7 +17,14 @@ export const Header: React.FC = () => {
   const { currentPath } = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [toolsDropdownOpen, setToolsDropdownOpen] = useState(false);
+  const [appModalOpen, setAppModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOpenAppModal = () => setAppModalOpen(true);
+    window.addEventListener('mediaflow:open-app-modal', handleOpenAppModal);
+    return () => window.removeEventListener('mediaflow:open-app-modal', handleOpenAppModal);
+  }, []);
 
   const isToolActive = TOOL_ROUTES.some((tool) => tool.path === currentPath);
 
@@ -94,6 +103,9 @@ export const Header: React.FC = () => {
 
   return (
     <header className="pill-header-wrapper" role="banner">
+      {/* Top Announcement Strip for Android App */}
+      <AppBanner onOpenModal={() => setAppModalOpen(true)} />
+
       <div className="pill-navbar">
         {/* Brand Wordmark */}
         <Link
@@ -203,6 +215,20 @@ export const Header: React.FC = () => {
 
         {/* Trailing Actions */}
         <div className="pill-actions">
+          {/* Android App Button */}
+          <button
+            type="button"
+            className="pill-app-btn"
+            onClick={() => setAppModalOpen(true)}
+            title="Download MediaFlow Android App (4K / 2K Ultra HD)"
+            aria-label="Download MediaFlow Android App"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993 0 .5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1523-.5676.416.416 0 00-.5676.1523l-2.0223 3.503C15.5902 8.4116 13.8533 8 12 8s-3.5902.4116-5.1369.9499L4.8408 5.4469a.416.416 0 00-.5676-.1523.416.416 0 00-.1523.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396" />
+            </svg>
+            <span className="pill-app-btn-text">Android App</span>
+          </button>
+
           <button
             type="button"
             className="pill-paste-btn"
@@ -265,6 +291,37 @@ export const Header: React.FC = () => {
             </svg>
             <span>Paste &amp; Analyze Link</span>
           </button>
+
+          {/* Android App Button in Drawer */}
+          <button
+            type="button"
+            className="mobile-drawer-link"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#059669',
+              fontWeight: 600,
+              background: 'rgba(16, 185, 129, 0.08)',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              margin: '6px 0',
+              border: '1px solid rgba(16, 185, 129, 0.2)',
+              width: '100%',
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+            onClick={() => {
+              closeAllMenus();
+              setAppModalOpen(true);
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993 0 .5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1523-.5676.416.416 0 00-.5676.1523l-2.0223 3.503C15.5902 8.4116 13.8533 8 12 8s-3.5902.4116-5.1369.9499L4.8408 5.4469a.416.416 0 00-.5676-.1523.416.416 0 00-.1523.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396" />
+            </svg>
+            <span>Download Android App (4K / 2K)</span>
+          </button>
+
           <div className="mobile-drawer-divider" />
           <Link
             to="/youtube-video-downloader"
@@ -318,6 +375,13 @@ export const Header: React.FC = () => {
           </Link>
         </div>
       )}
+
+      {/* App Download Modal */}
+      <AppDownloadModal
+        isOpen={appModalOpen}
+        onClose={() => setAppModalOpen(false)}
+      />
     </header>
   );
 };
+

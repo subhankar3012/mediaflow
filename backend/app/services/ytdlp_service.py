@@ -35,12 +35,12 @@ class YtDlpService:
                 if os.path.exists(cand):
                     node_path = cand
                     break
-        if deno_path:
-            ydl_opts["js_runtimes"] = {"deno": {"path": deno_path}}
-        elif node_path:
+        if node_path:
             ydl_opts["js_runtimes"] = {"node": {"path": node_path}}
+        elif deno_path:
+            ydl_opts["js_runtimes"] = {"deno": {"path": deno_path}}
         else:
-            ydl_opts["js_runtimes"] = {"deno": {}}
+            ydl_opts["js_runtimes"] = {"node": {}}
 
     @staticmethod
     def _sanitize_and_validate_cookies(raw_content: str) -> Optional[str]:
@@ -416,6 +416,12 @@ class YtDlpService:
 
                         logger.info(f"No playable formats or images extracted for {url} with use_cookies={use_cookies}")
                         last_error = YtDlpError("Requested format is not available.", code="FORMAT_NOT_FOUND")
+                        continue
+
+                    # If extraction only yielded <= 1 video format (e.g. fallback 360p) and alternate strategy exists, try it to obtain full resolutions
+                    video_count = sum(1 for f in normalized_formats if f.has_video)
+                    if video_count <= 1 and use_cookies != strategies[-1]:
+                        logger.info(f"Extraction with use_cookies={use_cookies} only yielded {video_count} video format. Trying alternate strategy for full resolutions...")
                         continue
 
                     # Sort formats: video+audio first, then highest resolution, then highest bitrate
