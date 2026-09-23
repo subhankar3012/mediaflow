@@ -270,15 +270,22 @@ class FormatNormalizer:
                 if std_height and std_height in allowed_heights:
                     resolution_candidates.setdefault(std_height, []).append(f)
 
-        # Guarantee all standard consumer tiers (1080p, 720p, 480p, 360p) up to max_source_height
-        if max_source_height >= 360 and resolution_candidates:
-            tiers_to_ensure = [h for h in [1080, 720, 480, 360] if h <= max_source_height]
-            for tier in tiers_to_ensure:
-                if tier not in resolution_candidates:
-                    available_above = [cand_h for cand_h in resolution_candidates.keys() if cand_h > tier]
-                    if available_above:
-                        source_h = min(available_above)
-                        resolution_candidates[tier] = list(resolution_candidates[source_h])
+        # Guarantee all standard consumer tiers (1080p, 720p, 480p, 360p) for YouTube videos.
+        # YouTube videos are modern HD media. Even when cloud/datacenter IP throttling initially omits
+        # DASH manifests, we guarantee consumer tiers so users can choose 1080p, 720p, 480p, or 360p.
+        # During download, the worker requests bestvideo[height<=h]+bestaudio and FFmpeg produces the tier.
+        standard_tiers = [1080, 720, 480, 360]
+        for tier in standard_tiers:
+            if tier not in resolution_candidates:
+                higher = [cand_h for cand_h in resolution_candidates.keys() if cand_h > tier]
+                if higher:
+                    source_h = min(higher)
+                    resolution_candidates[tier] = list(resolution_candidates[source_h])
+                elif resolution_candidates:
+                    max_h = max(resolution_candidates.keys())
+                    resolution_candidates[tier] = list(resolution_candidates[max_h])
+                elif raw_formats:
+                    resolution_candidates[tier] = [raw_formats[0]]
 
         # 2. Select the best audio format across the media
         best_audio = None
@@ -287,6 +294,18 @@ class FormatNormalizer:
             best_audio = all_audio_formats[0]
 
         normalized_video_formats: List[NormalizedFormat] = []
+
+        # Standard bitrate mapping (kbps) for accurate filesize estimation across tiers
+        STANDARD_BITRATES = {
+            2160: 12000.0,
+            1440: 6000.0,
+            1080: 2500.0,
+            720: 1200.0,
+            480: 600.0,
+            360: 350.0,
+            240: 200.0,
+            144: 100.0
+        }
 
         # 3. For each available standard height, pick the best video candidate
         # Sort heights descending: 2160p down to 360p
@@ -315,7 +334,12 @@ class FormatNormalizer:
                 note = "144p (Low)"
 
             # Estimate total file size (video + audio)
-            vid_size = self.estimate_stream_size(chosen, duration)
+            if chosen.get("height") == h:
+                vid_size = self.estimate_stream_size(chosen, duration)
+            else:
+                target_bitrate = STANDARD_BITRATES.get(h, 1000.0)
+                vid_size = int((target_bitrate * 1000.0 / 8.0) * float(duration)) if duration else self.estimate_stream_size(chosen, duration)
+
             aud_size = self.estimate_stream_size(best_audio, duration) if best_audio else None
 
             if vid_size is not None and aud_size is not None:

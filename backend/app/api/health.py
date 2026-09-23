@@ -53,5 +53,5 @@ async def health_check():
         "cookies_count": cookie_status["count"],
         "cookies_valid": cookie_status["valid"],
         "storage": "ok" if storage_ok else "error",
-        "build_version": "v1.0.8-visionos-all-res",
+        "build_version": "v1.0.9-all-tiers-guaranteed",
     }
