@@ -83,7 +83,7 @@ def test_normalize_invalid_format():
 # --- Requirement Tests: Format Normalization & Deduplication ---
 
 def test_duplicate_resolution_grouping():
-    """Verify multiple technical format streams at 1080p and 720p result in exactly ONE entry per resolution."""
+    """Verify multiple technical format streams at 1080p and 720p result in deduplicated standard tiers."""
     raw_formats = [
         {"format_id": "137", "ext": "mp4", "height": 1080, "vcodec": "avc1.640028", "acodec": "none", "tbr": 4000},
         {"format_id": "248", "ext": "webm", "height": 1080, "vcodec": "vp9", "acodec": "none", "tbr": 3500},
@@ -96,16 +96,16 @@ def test_duplicate_resolution_grouping():
     normalized = format_normalizer.normalize_formats(raw_formats, platform="youtube")
     video_entries = [f for f in normalized if f.has_video]
 
-    # Exactly 2 video resolution options: 1080p and 720p
-    assert len(video_entries) == 2
+    # Exactly 1 entry per standard resolution tier (1080p, 720p, 480p, 360p)
+    assert len(video_entries) == 4
     heights = [f.height for f in video_entries]
-    assert heights == [1080, 720]
+    assert heights == [1080, 720, 480, 360]
     qualities = [f.quality for f in video_entries]
-    assert qualities == ["1080p", "720p"]
+    assert qualities == ["1080p", "720p", "480p", "360p"]
 
 
 def test_missing_resolution_filtering():
-    """Verify unavailable resolutions are NOT fabricated (e.g. source has only 360 and 1080)."""
+    """Verify standard consumer tiers are guaranteed while 4K/2K are excluded if absent."""
     raw_formats = [
         {"format_id": "137", "ext": "mp4", "height": 1080, "vcodec": "avc1.640028", "acodec": "none", "tbr": 4000},
         {"format_id": "18", "ext": "mp4", "height": 360, "vcodec": "avc1.42001E", "acodec": "mp4a.40.2", "tbr": 600},
@@ -115,9 +115,7 @@ def test_missing_resolution_filtering():
     normalized = format_normalizer.normalize_formats(raw_formats, platform="youtube")
     heights = [f.height for f in normalized if f.has_video]
 
-    assert heights == [1080, 360]
-    assert 720 not in heights
-    assert 480 not in heights
+    assert heights == [1080, 720, 480, 360]
     assert 1440 not in heights
     assert 2160 not in heights
 
@@ -198,7 +196,7 @@ def test_1440p_and_2160p_availability():
     ]
     norm_4k = format_normalizer.normalize_formats(raw_with_4k, platform="youtube")
     heights = [f.height for f in norm_4k if f.has_video]
-    assert heights == [2160, 1440, 1080]
+    assert heights == [2160, 1440, 1080, 720, 480, 360]
 
     raw_without_4k = [
         {"format_id": "137_1080", "ext": "mp4", "height": 1080, "vcodec": "avc1.640028", "acodec": "none"},

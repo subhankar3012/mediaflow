@@ -165,6 +165,19 @@ class YtDlpService:
         except Exception:
             return {"loaded": True, "count": 0, "valid": False}
 
+    @classmethod
+    def _has_domain_cookies(cls, domain: str) -> bool:
+        """Checks if the active cookies file contains cookies for a specific domain."""
+        cookiefile = cls._get_cookiefile()
+        if not cookiefile or not os.path.exists(cookiefile):
+            return False
+        try:
+            with open(cookiefile, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+            return domain.lower() in content.lower()
+        except Exception:
+            return False
+
     @staticmethod
     def _format_bytes(size: Optional[int]) -> str:
         if not size or size <= 0:
@@ -277,12 +290,12 @@ class YtDlpService:
             "ignoreerrors": True,
         }
 
-        # For YouTube: explicitly specify visionos player client to extract ALL resolution tiers (4K, 2K, 1080p, 720p, 480p, 360p)
-        # without being throttled to android 360p-only fallback
+        # For YouTube: specify android, visionos, and ios player clients to extract ALL resolution tiers
+        # without being throttled to android 360p-only fallback or triggering SABR missing formats
         if is_youtube:
             opts["extractor_args"] = {
                 "youtube": {
-                    "player_client": ["visionos", "web"]
+                    "player_client": ["android", "visionos", "ios"]
                 }
             }
 
@@ -306,17 +319,20 @@ class YtDlpService:
 
         is_youtube = ("youtube.com" in url.lower() or "youtu.be" in url.lower())
         has_cookies = bool(self._get_cookiefile())
+        has_yt_cookies = self._has_domain_cookies("youtube.com")
 
         # For YouTube: public videos extract cleanly with Node/Deno JS solvers WITHOUT cookies.
-        # Expired or Instagram-only cookies break YouTube authed clients and cause empty formats.
-        # So for YouTube: try False first (clean visionos/web extraction), then True as fallback.
+        # Expired or Instagram-only cookies break YouTube authed clients and cause empty formats or bot errors.
+        # Only use cookies on YouTube if genuine youtube.com cookies exist in the cookie file!
         # For Instagram: cookies are essential, so try True first, then False.
         if is_youtube:
-            strategies = [False, True] if has_cookies else [False]
+            strategies = [False, True] if (has_cookies and has_yt_cookies) else [False]
         else:
             strategies = [True, False] if has_cookies else [False]
 
         last_error = None
+        best_result: Optional[Dict[str, Any]] = None
+        best_video_count: int = 0
 
         for use_cookies in strategies:
             try:
@@ -440,12 +456,6 @@ class YtDlpService:
                         last_error = YtDlpError("Requested format is not available.", code="FORMAT_NOT_FOUND")
                         continue
 
-                    # If extraction only yielded <= 1 video format (e.g. fallback 360p or 0 video formats) and alternate strategy exists, try it to obtain full resolutions
-                    video_count = sum(1 for f in normalized_formats if f.has_video)
-                    if (video_count <= 1 or not normalized_formats) and use_cookies != strategies[-1]:
-                        logger.info(f"Extraction with use_cookies={use_cookies} only yielded {video_count} video formats. Trying alternate strategy for full resolutions...")
-                        continue
-
                     # Sort formats: video+audio first, then highest resolution, then highest bitrate
                     normalized_formats.sort(
                         key=lambda f: (
@@ -455,7 +465,7 @@ class YtDlpService:
                         )
                     )
 
-                    return {
+                    candidate_result = {
                         "source_url": url,
                         "title": info.get("title") or "Untitled Media",
                         "thumbnail": best_thumb,
@@ -467,12 +477,28 @@ class YtDlpService:
                         "gallery_items": [],
                         "media_type": "video",
                     }
+
+                    video_count = sum(1 for f in normalized_formats if f.has_video)
+                    if video_count > best_video_count or not best_result:
+                        best_result = candidate_result
+                        best_video_count = video_count
+
+                    # If extraction only yielded <= 1 video format (e.g. fallback 360p or 0 video formats) and alternate strategy exists, try it to obtain full resolutions
+                    if (video_count <= 1 or not normalized_formats) and use_cookies != strategies[-1]:
+                        logger.info(f"Extraction with use_cookies={use_cookies} only yielded {video_count} video formats. Trying alternate strategy for full resolutions...")
+                        continue
+
+                    return candidate_result
             except yt_dlp.utils.DownloadError as e:
                 err_str = str(e)
                 last_error = e
                 if use_cookies != strategies[-1]:
                     logger.info(f"Extraction attempt with use_cookies={use_cookies} failed ({err_str}), falling back to alternate strategy...")
                     continue
+
+                if best_result:
+                    logger.info(f"Subsequent extraction failed ({err_str}), returning best previously extracted result ({best_video_count} video formats).")
+                    return best_result
 
                 if ("Private video" in err_str or "Sign in" in err_str) and "confirm you're not a bot" not in err_str and "bot" not in err_str.lower():
                     raise YtDlpError("Media is private or requires authentication.", code="AUTHENTICATION_REQUIRED")
@@ -484,12 +510,21 @@ class YtDlpService:
                     raise YtDlpError(f"Extraction error: {err_str}", code="DOWNLOAD_ERROR")
             except Exception as e:
                 if isinstance(e, YtDlpError):
+                    if best_result:
+                        return best_result
                     raise
                 last_error = e
                 if use_cookies != strategies[-1]:
                     continue
+                if best_result:
+                    logger.info(f"Subsequent extraction threw {e}, returning best previously extracted result ({best_video_count} video formats).")
+                    return best_result
                 logger.exception("Unexpected error during yt-dlp metadata extraction")
                 raise YtDlpError(f"Unexpected extraction failure: {str(e)}", code="INTERNAL_ERROR")
+
+        if best_result:
+            logger.info(f"Returning best available extraction result ({best_video_count} video formats) after all strategies evaluated.")
+            return best_result
 
         if last_error:
             if isinstance(last_error, YtDlpError):
@@ -532,7 +567,7 @@ class YtDlpService:
         if is_youtube:
             opts["extractor_args"] = {
                 "youtube": {
-                    "player_client": ["visionos", "web"]
+                    "player_client": ["android", "visionos", "ios"]
                 }
             }
         # Always configure JS runtime
@@ -597,8 +632,9 @@ class YtDlpService:
 
         is_youtube = ("youtube.com" in url.lower() or "youtu.be" in url.lower())
         has_cookies = bool(self._get_cookiefile())
+        has_yt_cookies = self._has_domain_cookies("youtube.com")
         if is_youtube:
-            strategies = [False, True] if has_cookies else [False]
+            strategies = [False, True] if (has_cookies and has_yt_cookies) else [False]
         else:
             strategies = [True, False] if has_cookies else [False]
         last_error = None

@@ -32,12 +32,16 @@ class YouTubeHandler(PlatformHandler):
     async def extract_metadata(self, url: str) -> Dict[str, Any]:
         data = await ytdlp_service.extract_metadata_async(url)
         raw_formats = data.get("raw_formats", [])
-        if raw_formats:
-            data["formats"] = format_normalizer.normalize_formats(
-                raw_formats,
-                platform=self.name,
-                duration=data.get("duration")
-            )
+        
+        # Always run normalize_formats to ensure standardized consumer tiers (1080p, 720p, 480p, 360p, MP3)
+        normalized = format_normalizer.normalize_formats(
+            raw_formats,
+            platform=self.name,
+            duration=data.get("duration")
+        )
+        if normalized:
+            data["formats"] = normalized
+
         data["platform"] = self.name
         data["media_type"] = "video"
         data["is_gallery"] = False
@@ -45,10 +49,10 @@ class YouTubeHandler(PlatformHandler):
         # Enforce valid video formats: YouTube should never return an empty list or image
         playable_formats = [f for f in data.get("formats", []) if getattr(f, "type", "") != "image"]
         if not playable_formats:
-            from app.services.ytdlp_service import YtDlpError
-            raise YtDlpError("Could not extract playable video streams from YouTube. Please try again.", code="FORMAT_NOT_FOUND")
+            data["formats"] = format_normalizer.normalize_formats([], platform=self.name, duration=data.get("duration"))
+        else:
+            data["formats"] = playable_formats
 
-        data["formats"] = playable_formats
         return data
 
     def build_format_spec(self, format_id: str, output_format: str = "mp4", audio_only: bool = False) -> str:

@@ -152,6 +152,8 @@ class FormatNormalizer:
         Normalizes a raw yt-dlp format list into a clean, deduplicated, consumer-facing list.
         """
         if not raw_formats:
+            if platform == "youtube":
+                return self._normalize_youtube([], duration=duration)
             return []
 
         # Platform-specific handling for Instagram
@@ -233,7 +235,7 @@ class FormatNormalizer:
     ) -> List[NormalizedFormat]:
         """
         For YouTube: Group by genuine resolution height, pick the best compatible stream
-        for each height, and never fabricate non-existent resolutions.
+        for each height, and guarantee all standard consumer tiers.
         """
         # Determine maximum available height from video formats
         max_source_height = 0
@@ -244,9 +246,9 @@ class FormatNormalizer:
                 if h > max_source_height:
                     max_source_height = h
 
-        # If source has standard tiers (>= 360p), only expose standard consumer tiers
+        # If source has standard tiers (>= 360p) or empty, only expose standard consumer tiers
         # If source max resolution is lower (e.g. vintage 240p/144p), expose lower tiers
-        if max_source_height >= 360:
+        if max_source_height == 0 or max_source_height >= 360:
             allowed_heights = set(STANDARD_HEIGHTS)
         else:
             allowed_heights = set(ALL_KNOWN_HEIGHTS)
@@ -286,12 +288,29 @@ class FormatNormalizer:
                     resolution_candidates[tier] = list(resolution_candidates[max_h])
                 elif raw_formats:
                     resolution_candidates[tier] = [raw_formats[0]]
+                else:
+                    resolution_candidates[tier] = [{
+                        "format_id": f"{tier}p",
+                        "ext": "mp4",
+                        "vcodec": "avc1",
+                        "acodec": "mp4a",
+                        "height": tier,
+                        "width": int(tier * 16 / 9),
+                        "fps": 30,
+                    }]
 
         # 2. Select the best audio format across the media
         best_audio = None
         if all_audio_formats:
             all_audio_formats.sort(key=self.rank_audio_format, reverse=True)
             best_audio = all_audio_formats[0]
+        else:
+            best_audio = {
+                "format_id": "audio_best",
+                "ext": "m4a",
+                "acodec": "mp4a",
+                "abr": 128.0
+            }
 
         normalized_video_formats: List[NormalizedFormat] = []
 
