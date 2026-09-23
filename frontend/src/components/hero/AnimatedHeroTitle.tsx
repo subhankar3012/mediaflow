@@ -10,7 +10,7 @@ export interface AnimatedHeroTitleProps {
 }
 
 const DEFAULT_PHRASES: string[] = [
-  'Free Online Video & Audio Downloader for YouTube & Instagram',
+  'Download YouTube & Instagram Videos Free Without Watermark',
   'YouTube Video Downloader',
   'YouTube to MP3 Converter',
   'Instagram Reels Downloader',

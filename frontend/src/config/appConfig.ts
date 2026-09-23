@@ -14,7 +14,7 @@ const configuredDomain =
 
 export const appConfig: AppConfig = {
   brandName: 'MediaFlow',
-  brandTagline: 'Free Online Video & Audio Downloader for YouTube & Instagram',
+  brandTagline: 'Download YouTube & Instagram Videos Free Without Watermark',
   canonicalDomain: configuredDomain.replace(/\/+$/, ''),
   enableAds: true, // Reserves space and provides ad containers without deceptive UI
   enableInterstitial: false, // Configurable single-step preparation flow; off by default for clean UX

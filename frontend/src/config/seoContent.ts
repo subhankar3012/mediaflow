@@ -31,9 +31,9 @@ export interface PageSEO {
 export const SEO_PAGES: Record<string, PageSEO> = {
   '/': {
     path: '/',
-    title: 'MediaFlow — Free Online Video & Audio Downloader for YouTube & Instagram',
-    metaDescription: 'Download YouTube and Instagram videos in high-definition MP4 or extract crystal-clear MP3 audio for free. Fast, secure, and mobile-friendly with no registration required.',
-    h1: 'Free Online Video & Audio Downloader for YouTube & Instagram',
+    title: 'MediaFlow — Download YouTube & Instagram Videos Free Without Watermark',
+    metaDescription: 'Download YouTube and Instagram videos in high-definition MP4 or extract crystal-clear MP3 audio for free without watermark. Fast, secure, and mobile-friendly with no registration required.',
+    h1: 'Download YouTube & Instagram Videos Free Without Watermark',
     subtitle: 'Paste any YouTube or Instagram link to download high-speed MP4 video, MP3 audio, or full-resolution thumbnails with zero quality loss.',
     platform: 'all',
     placeholder: 'Paste YouTube or Instagram link here (e.g. https://www.youtube.com/watch?v=...)',

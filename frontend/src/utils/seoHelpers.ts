@@ -39,7 +39,7 @@ export function generateJsonLdGraph(options: GenerateSeoOptions, canonicalDomain
     '@id': `${canonicalDomain}/#website`,
     url: canonicalDomain,
     name: appConfig.brandName,
-    alternateName: ['MediaFlow Downloader', 'MediaFlow App'],
+    alternateName: ['Media Flow', 'MediaFlow', 'MediaFlow Downloader', 'MediaFlow App'],
     description: appConfig.brandTagline,
     inLanguage: 'en',
   });
