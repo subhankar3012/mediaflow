@@ -20,7 +20,7 @@ export const InterstitialModal: React.FC<InterstitialModalProps> = ({
   seconds,
   fileName,
 }) => {
-  const initialSeconds = seconds !== undefined ? seconds : appConfig.interstitialCountdownSeconds;
+  const initialSeconds = seconds !== undefined ? seconds : (appConfig.interstitialCountdownSeconds || 5);
   const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
   const completedRef = useRef(false);
 
@@ -29,6 +29,7 @@ export const InterstitialModal: React.FC<InterstitialModalProps> = ({
     completedRef.current = true;
     if (onReady) onReady();
     if (onProceed) onProceed();
+    onClose();
   };
 
   useEffect(() => {
@@ -38,7 +39,10 @@ export const InterstitialModal: React.FC<InterstitialModalProps> = ({
       return;
     }
 
-    // Trigger Monetag Ad dynamically during download processing time
+    setSecondsLeft(initialSeconds);
+    completedRef.current = false;
+
+    // Trigger Monetag tag
     triggerMonetagAd();
 
     if (initialSeconds <= 0) {
@@ -59,13 +63,13 @@ export const InterstitialModal: React.FC<InterstitialModalProps> = ({
     return () => clearInterval(timer);
   }, [isOpen, initialSeconds]);
 
-  // Auto-proceed when countdown finishes
+  // Auto-close when timer reaches 0
   useEffect(() => {
     if (isOpen && secondsLeft === 0 && !completedRef.current) {
-      const autoProceedTimeout = setTimeout(() => {
+      const autoCloseTimeout = setTimeout(() => {
         handleComplete();
       }, 350);
-      return () => clearTimeout(autoProceedTimeout);
+      return () => clearTimeout(autoCloseTimeout);
     }
   }, [isOpen, secondsLeft]);
 
@@ -77,46 +81,100 @@ export const InterstitialModal: React.FC<InterstitialModalProps> = ({
   );
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div className="app-download-modal" style={{ maxWidth: '480px', textAlign: 'center' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-          <div
-            style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, rgba(37,99,235,0.12), rgba(16,185,129,0.12))',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--brand-primary, #2563eb)',
-            }}
-          >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
+    <div
+      className="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="interstitial-modal-title"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(4px)',
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1rem',
+      }}
+    >
+      <div
+        className="app-download-modal"
+        style={{
+          maxWidth: '460px',
+          width: '100%',
+          textAlign: 'center',
+          position: 'relative',
+          padding: '1.25rem 1.5rem',
+          borderRadius: 'var(--radius-xl, 1rem)',
+          backgroundColor: '#ffffff',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Top Dismiss Button */}
+        <button
+          type="button"
+          onClick={handleComplete}
+          aria-label="Dismiss Modal"
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '6px',
+            color: 'var(--slate-400, #94a3b8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '50%',
+            transition: 'color 0.15s ease',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = '#0f172a')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+
+        {/* 1. TOP: Title & Horizontal Loader */}
+        <div style={{ marginBottom: '0.875rem', textAlign: 'left' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+            <span
+              id="interstitial-modal-title"
+              style={{ fontSize: '0.925rem', fontWeight: 700, color: 'var(--slate-900, #0f172a)' }}
+            >
+              Preparing High-Speed Download
+            </span>
+            <span
+              className="font-mono"
+              style={{
+                fontSize: '0.75rem',
+                color: '#2563eb',
+                fontWeight: 600,
+                backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                padding: '2px 8px',
+                borderRadius: '999px',
+              }}
+            >
+              {secondsLeft > 0 ? `${secondsLeft}s` : 'Ready'}
+            </span>
           </div>
-        </div>
 
-        <h3 id="modal-title" style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 0.5rem', color: 'var(--slate-900)' }}>
-          Preparing High-Speed Download
-        </h3>
-        <p style={{ fontSize: '0.875rem', color: 'var(--slate-600)', margin: '0 0 1.25rem', lineHeight: 1.5 }}>
-          {fileName ? `Encoding & syncing "${fileName.length > 50 ? fileName.slice(0, 50) + '...' : fileName}"` : 'Allocating high-speed audio & video stream...'}
-        </p>
-
-        {/* Animated Progress Bar */}
-        <div style={{ margin: '1rem 0 1.25rem' }}>
+          {/* Horizontal animated loader bar */}
           <div
             style={{
-              height: '8px',
+              height: '7px',
               width: '100%',
-              backgroundColor: 'var(--slate-100, #f1f5f9)',
+              backgroundColor: '#f1f5f9',
               borderRadius: '999px',
               overflow: 'hidden',
               position: 'relative',
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06)',
             }}
           >
             <div
@@ -125,46 +183,78 @@ export const InterstitialModal: React.FC<InterstitialModalProps> = ({
                 width: `${percentComplete}%`,
                 background: 'linear-gradient(90deg, #2563eb, #10b981)',
                 borderRadius: '999px',
-                transition: 'width 0.8s ease-in-out',
+                transition: 'width 0.9s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             />
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--slate-500)', marginTop: '0.4rem', fontFamily: 'var(--font-mono)' }}>
-            <span>Synchronizing stream</span>
-            <span>{secondsLeft > 0 ? `${secondsLeft}s remaining` : 'Ready!'}</span>
+
+          <div style={{ fontSize: '0.75rem', color: 'var(--slate-500, #64748b)', marginTop: '0.35rem', display: 'flex', justifyContent: 'space-between' }}>
+            <span>{fileName ? `Syncing "${fileName.length > 35 ? fileName.slice(0, 35) + '...' : fileName}"` : 'Extracting audio & video streams in background...'}</span>
+            <span className="font-mono">{percentComplete}%</span>
           </div>
         </div>
 
-        {/* Adsterra 300x250 Rectangle Ad in Preparation Modal */}
-        <div style={{ margin: '0.75rem auto' }}>
+        {/* 2. MIDDLE: Dedicated Ad Placement */}
+        <div
+          style={{
+            margin: '0.5rem auto 0.75rem auto',
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '260px',
+          }}
+        >
           <AdsterraBanner slotType="rectangle" />
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginTop: '1.25rem' }}>
+        {/* 3. BOTTOM: Download Now Button & Auto-Close Timer */}
+        <div>
           <button
             type="button"
             className="btn-download-primary"
             onClick={handleComplete}
-            style={{ flex: 1, padding: '0.75rem 1rem', fontSize: '0.95rem', justifyContent: 'center' }}
-          >
-            {secondsLeft > 0 ? `Start Download Now (${secondsLeft}s)` : 'Download Starting...'}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
             style={{
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-lg)',
-              border: '1px solid var(--slate-200)',
-              backgroundColor: '#ffffff',
-              color: 'var(--slate-700)',
-              fontWeight: 500,
-              fontSize: '0.875rem',
+              width: '100%',
+              padding: '0.85rem 1.25rem',
+              fontSize: '1rem',
+              fontWeight: 600,
+              justifyContent: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
               cursor: 'pointer',
             }}
           >
-            Cancel
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span>Download Now {secondsLeft > 0 ? `(${secondsLeft}s)` : ''}</span>
           </button>
+
+          <p
+            style={{
+              margin: '0.5rem 0 0 0',
+              fontSize: '0.75rem',
+              color: 'var(--slate-500, #64748b)',
+              fontFamily: 'var(--font-mono, monospace)',
+            }}
+          >
+            Auto-closing in {secondsLeft}s... (processing in background)
+          </p>
         </div>
       </div>
     </div>

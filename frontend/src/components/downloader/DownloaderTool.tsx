@@ -313,6 +313,10 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
     setError(null);
     setOutputType('zip');
 
+    if (appConfig.enableInterstitial) {
+      setShowInterstitial(true);
+    }
+
     try {
       const res = await api.createDownload({
         analysis_id: analysis.analysis_id,
@@ -364,17 +368,19 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
     }
   };
 
-  // 5. User Click on Main Download CTA Button - No redirect on download button (only standard popups)
+  // 5. User Click on Main Download CTA Button - Starts background extraction & shows 5s ad popup
   const handleDownloadClick = () => {
     if (outputType === 'thumbnail' || analysis?.media_type === 'image') {
       executeDownloadJob();
       return;
     }
 
+    // Immediately start extraction & merging in the background
+    executeDownloadJob();
+
+    // Open popup modal (top horizontal loader + ad + countdown 5..1 + Download Now)
     if (appConfig.enableInterstitial) {
       setShowInterstitial(true);
-    } else {
-      executeDownloadJob();
     }
   };
 
@@ -583,15 +589,14 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
       )}
 
       {/* Interstitial Ad Preparation Modal */}
-      <InterstitialModal
-        isOpen={showInterstitial}
-        onReady={() => {
-          setShowInterstitial(false);
-          executeDownloadJob();
-        }}
-        onClose={() => setShowInterstitial(false)}
-        seconds={appConfig.interstitialCountdownSeconds}
-      />
+      {appConfig.enableInterstitial && (
+        <InterstitialModal
+          isOpen={showInterstitial}
+          onClose={() => setShowInterstitial(false)}
+          seconds={appConfig.interstitialCountdownSeconds}
+          fileName={analysis?.title || undefined}
+        />
+      )}
     </div>
   );
 };
