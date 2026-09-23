@@ -39,6 +39,16 @@ class YouTubeHandler(PlatformHandler):
                 duration=data.get("duration")
             )
         data["platform"] = self.name
+        data["media_type"] = "video"
+        data["is_gallery"] = False
+
+        # Enforce valid video formats: YouTube should never return an empty list or image
+        playable_formats = [f for f in data.get("formats", []) if getattr(f, "type", "") != "image"]
+        if not playable_formats:
+            from app.services.ytdlp_service import YtDlpError
+            raise YtDlpError("Could not extract playable video streams from YouTube. Please try again.", code="FORMAT_NOT_FOUND")
+
+        data["formats"] = playable_formats
         return data
 
     def build_format_spec(self, format_id: str, output_format: str = "mp4", audio_only: bool = False) -> str:

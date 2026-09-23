@@ -293,8 +293,18 @@ class YtDlpService:
         """
         import yt_dlp
 
+        is_youtube = ("youtube.com" in url.lower() or "youtu.be" in url.lower())
         has_cookies = bool(self._get_cookiefile())
-        strategies = [True, False] if has_cookies else [False]
+
+        # For YouTube: public videos extract cleanly with Node/Deno JS solvers WITHOUT cookies.
+        # Expired or Instagram-only cookies break YouTube authed clients and cause empty formats.
+        # So for YouTube: try False first (clean visionos/web extraction), then True as fallback.
+        # For Instagram: cookies are essential, so try True first, then False.
+        if is_youtube:
+            strategies = [False, True] if has_cookies else [False]
+        else:
+            strategies = [True, False] if has_cookies else [False]
+
         last_error = None
 
         for use_cookies in strategies:
@@ -382,8 +392,9 @@ class YtDlpService:
 
                     best_thumb = self._select_best_thumbnail(info)
 
-                    # If 0 playable formats extracted, check if this is an image/photo post!
-                    if not normalized_formats:
+                    # If 0 playable formats extracted, check if this is an image/photo post (Instagram only)!
+                    # YouTube NEVER has standalone photo posts; YouTube must never return media_type="image".
+                    if not normalized_formats and not is_youtube:
                         thumbs = info.get("thumbnails") or []
                         full_res_thumbs = [
                             t["url"] for t in thumbs
@@ -418,10 +429,10 @@ class YtDlpService:
                         last_error = YtDlpError("Requested format is not available.", code="FORMAT_NOT_FOUND")
                         continue
 
-                    # If extraction only yielded <= 1 video format (e.g. fallback 360p) and alternate strategy exists, try it to obtain full resolutions
+                    # If extraction only yielded <= 1 video format (e.g. fallback 360p or 0 video formats) and alternate strategy exists, try it to obtain full resolutions
                     video_count = sum(1 for f in normalized_formats if f.has_video)
-                    if video_count <= 1 and use_cookies != strategies[-1]:
-                        logger.info(f"Extraction with use_cookies={use_cookies} only yielded {video_count} video format. Trying alternate strategy for full resolutions...")
+                    if (video_count <= 1 or not normalized_formats) and use_cookies != strategies[-1]:
+                        logger.info(f"Extraction with use_cookies={use_cookies} only yielded {video_count} video formats. Trying alternate strategy for full resolutions...")
                         continue
 
                     # Sort formats: video+audio first, then highest resolution, then highest bitrate
@@ -566,8 +577,12 @@ class YtDlpService:
                     "eta": "00:00",
                 })
 
+        is_youtube = ("youtube.com" in url.lower() or "youtu.be" in url.lower())
         has_cookies = bool(self._get_cookiefile())
-        strategies = [True, False] if has_cookies else [False]
+        if is_youtube:
+            strategies = [False, True] if has_cookies else [False]
+        else:
+            strategies = [True, False] if has_cookies else [False]
         last_error = None
 
         for use_cookies in strategies:

@@ -389,10 +389,11 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
   };
 
   const isInstagram = analysis?.platform === 'instagram';
+  const isYouTube = analysis?.platform === 'youtube';
 
   const getDownloadButtonLabel = () => {
-    if (analysis?.media_type === 'image') return 'Download HD Photo';
-    if (isInstagram) return 'Download Video';
+    if (analysis?.media_type === 'image' && !isYouTube) return 'Download HD Photo';
+    if (isInstagram && !isYouTube) return 'Download Video';
     if (outputType === 'mp3') return 'Download MP3';
     if (outputType === 'thumbnail') return 'Download Thumbnail';
     // Show friendly label like "Download 1080p Video" instead of raw format ID
@@ -457,8 +458,8 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
 
           {step !== 'completed' && !analysis.is_gallery && (
             <>
-              {/* For Instagram or single image: Hide format/quality selectors if Instagram or single image */}
-              {!isInstagram && analysis.media_type !== 'image' && (
+              {/* Format and quality selectors: shown for YouTube and any non-Instagram video media */}
+              {(isYouTube || (!isInstagram && analysis.media_type !== 'image')) && (
                 <>
                   {/* Output Format Selector: MP4 | MP3 | Thumbnail */}
                   <OutputSelector
