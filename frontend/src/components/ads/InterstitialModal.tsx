@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { appConfig } from '../../config/appConfig';
 import { triggerMonetagAd } from '../../utils/monetag';
+import { AdsterraBanner } from './AdsterraBanner';
 
 export interface InterstitialModalProps {
   isOpen: boolean;
@@ -127,6 +128,11 @@ export const InterstitialModal: React.FC<InterstitialModalProps> = ({
             <span>Synchronizing stream</span>
             <span>{secondsLeft > 0 ? `${secondsLeft}s remaining` : 'Ready!'}</span>
           </div>
+        </div>
+
+        {/* Adsterra 300x250 Rectangle Ad in Preparation Modal */}
+        <div style={{ margin: '0.75rem auto' }}>
+          <AdsterraBanner slotType="rectangle" />
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginTop: '1.25rem' }}>
