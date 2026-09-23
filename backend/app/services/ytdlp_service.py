@@ -35,12 +35,14 @@ class YtDlpService:
                 if os.path.exists(cand):
                     node_path = cand
                     break
-        if node_path:
-            ydl_opts["js_runtimes"] = {"node": {"path": node_path}}
-        elif deno_path:
-            ydl_opts["js_runtimes"] = {"deno": {"path": deno_path}}
+        runtimes: Dict[str, Any] = {}
+        if deno_path:
+            runtimes["deno"] = {"path": deno_path}
         else:
-            ydl_opts["js_runtimes"] = {"node": {}}
+            runtimes["deno"] = {}
+        if node_path:
+            runtimes["node"] = {"path": node_path}
+        ydl_opts["js_runtimes"] = runtimes
 
     @staticmethod
     def _sanitize_and_validate_cookies(raw_content: str) -> Optional[str]:
@@ -262,8 +264,8 @@ class YtDlpService:
             format_note=str(format_note) if format_note else None
         )
 
-    def _build_extract_opts(self, use_cookies: bool = True) -> Dict[str, Any]:
-        """Builds extraction options. Configures JS runtime for solving JS challenges."""
+    def _build_extract_opts(self, use_cookies: bool = True, is_youtube: bool = False) -> Dict[str, Any]:
+        """Builds extraction options. Configures JS runtime and player client for solving YouTube challenges."""
         opts: Dict[str, Any] = {
             "quiet": True,
             "no_warnings": True,
@@ -274,6 +276,15 @@ class YtDlpService:
             "ignore_no_formats_error": True,
             "ignoreerrors": True,
         }
+
+        # For YouTube: explicitly specify visionos player client to extract ALL resolution tiers (4K, 2K, 1080p, 720p, 480p, 360p)
+        # without being throttled to android 360p-only fallback
+        if is_youtube:
+            opts["extractor_args"] = {
+                "youtube": {
+                    "player_client": ["visionos", "web"]
+                }
+            }
 
         # Always configure JS runtime so yt-dlp can solve challenges on Linux/Docker
         self._configure_js_runtime(opts)
@@ -309,7 +320,7 @@ class YtDlpService:
 
         for use_cookies in strategies:
             try:
-                ydl_opts = self._build_extract_opts(use_cookies=use_cookies)
+                ydl_opts = self._build_extract_opts(use_cookies=use_cookies, is_youtube=is_youtube)
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=False)
                     if not info:
@@ -499,7 +510,8 @@ class YtDlpService:
         format_spec: str,
         output_template: str,
         progress_hook: Callable[[Dict[str, Any]], None],
-        use_cookies: bool = True
+        use_cookies: bool = True,
+        is_youtube: bool = False
     ) -> Dict[str, Any]:
         """Builds download options for yt-dlp."""
         opts: Dict[str, Any] = {
@@ -517,6 +529,12 @@ class YtDlpService:
             "buffersize": 1024 * 1024,
             "http_chunk_size": 5 * 1024 * 1024,
         }
+        if is_youtube:
+            opts["extractor_args"] = {
+                "youtube": {
+                    "player_client": ["visionos", "web"]
+                }
+            }
         # Always configure JS runtime
         self._configure_js_runtime(opts)
 
@@ -589,7 +607,7 @@ class YtDlpService:
             if cancellation_event and cancellation_event.is_set():
                 raise YtDlpError("Download was cancelled.", code="CANCELLED")
             try:
-                ydl_opts = self._build_download_opts(format_spec, output_template, _hook, use_cookies=use_cookies)
+                ydl_opts = self._build_download_opts(format_spec, output_template, _hook, use_cookies=use_cookies, is_youtube=is_youtube)
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=True)
                     if cancellation_event and cancellation_event.is_set():

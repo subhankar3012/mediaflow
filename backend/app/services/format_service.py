@@ -270,6 +270,16 @@ class FormatNormalizer:
                 if std_height and std_height in allowed_heights:
                     resolution_candidates.setdefault(std_height, []).append(f)
 
+        # Guarantee all standard consumer tiers (1080p, 720p, 480p, 360p) up to max_source_height
+        if max_source_height >= 360 and resolution_candidates:
+            tiers_to_ensure = [h for h in [1080, 720, 480, 360] if h <= max_source_height]
+            for tier in tiers_to_ensure:
+                if tier not in resolution_candidates:
+                    available_above = [cand_h for cand_h in resolution_candidates.keys() if cand_h > tier]
+                    if available_above:
+                        source_h = min(available_above)
+                        resolution_candidates[tier] = list(resolution_candidates[source_h])
+
         # 2. Select the best audio format across the media
         best_audio = None
         if all_audio_formats:
