@@ -4,6 +4,7 @@ export interface AppConfig {
   canonicalDomain: string;
   enableAds: boolean;
   adsterraDirectLink: string;
+  monetagDirectLink: string;
   adsterraBanners: {
     leaderboard728x90: string;
     mobile320x50: string;
@@ -29,6 +30,7 @@ export const appConfig: AppConfig = {
   canonicalDomain: configuredDomain.replace(/\/+$/, ''),
   enableAds: true,
   adsterraDirectLink: 'https://www.profitableratecpmnetwork.com/ber0grk7?key=0b0e46dfb008c520f9fdf850820e8c9d',
+  monetagDirectLink: 'https://omg10.com/4/11880595',
   adsterraBanners: {
     leaderboard728x90: '20d268753690e18bcb7cb0d3a3d28e8f',
     mobile320x50: '078849d0d16d7514274d905b13b1ab2e',

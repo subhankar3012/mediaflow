@@ -78,9 +78,10 @@ export const Footer: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    if (appConfig.enableAds && appConfig.adsterraDirectLink) {
+                    const directLink = appConfig.monetagDirectLink || appConfig.adsterraDirectLink;
+                    if (appConfig.enableAds && directLink) {
                       try {
-                        window.open(appConfig.adsterraDirectLink, '_blank', 'noopener,noreferrer');
+                        window.open(directLink, '_blank', 'noopener,noreferrer');
                       } catch {}
                     }
                     window.dispatchEvent(new CustomEvent('mediaflow:open-app-modal'));

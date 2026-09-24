@@ -523,9 +523,10 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          if (appConfig.enableAds && appConfig.adsterraDirectLink) {
+                          const directLink = appConfig.monetagDirectLink || appConfig.adsterraDirectLink;
+                          if (appConfig.enableAds && directLink) {
                             try {
-                              window.open(appConfig.adsterraDirectLink, '_blank', 'noopener,noreferrer');
+                              window.open(directLink, '_blank', 'noopener,noreferrer');
                             } catch {}
                           }
                           handleOutputTypeChange('thumbnail');

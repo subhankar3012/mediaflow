@@ -16,6 +16,38 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="preconnect" href="https://i.ytimg.com" crossorigin />
+    <!-- Monetag Smart Ad Suite (Staggered Low-Irritation Loading) -->
+    <script>
+      (function() {
+        if (typeof window === 'undefined') return;
+
+        function injectMonetag(src, zone) {
+          if (document.querySelector('script[data-zone="' + zone + '"]')) return;
+          var s = document.createElement('script');
+          s.dataset.zone = zone;
+          s.src = src;
+          s.async = true;
+          s.setAttribute('data-cfasync', 'false');
+          var target = [document.documentElement, document.body, document.head].filter(Boolean).pop();
+          if (target) target.appendChild(s);
+        }
+
+        // 1. In-Page Push (Zone 11880513) - Subtle floating notification at 5s
+        setTimeout(function() {
+          injectMonetag('https://nap5k.com/tag.min.js', '11880513');
+        }, 5000);
+
+        // 2. Vignette Banner (Zone 11880602) - Transition card at 10s
+        setTimeout(function() {
+          injectMonetag('https://n6wxm.com/vignette.min.js', '11880602');
+        }, 10000);
+
+        // 3. On-Click Popunder (Zone 11880603) - Protected entry: starts only after 15s
+        setTimeout(function() {
+          injectMonetag('https://al5sm.com/tag.min.js', '11880603');
+        }, 15000);
+      })();
+    </script>
     <!-- Adsterra Network Tags -->
     <script src="https://pl31478897.profitableratecpmnetwork.com/15/85/ea/1585eae8675314ca6c01143c6d125e61.js"></script>
     <script src="https://pl31478899.profitableratecpmnetwork.com/e6/46/f6/e646f6d5d2dd7ddd81f2a78ddd7989b3.js"></script>
