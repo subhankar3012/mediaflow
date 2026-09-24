@@ -16,109 +16,42 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="preconnect" href="https://i.ytimg.com" crossorigin />
-    <!-- Smart 20-Second Ad Redirect & Popunder Cooldown Controller -->
+    <!-- 20-Second Ad Popunder Cooldown Controller -->
     <script>
       (function() {
         if (typeof window === 'undefined') return;
-
-        var COOLDOWN_MS = 20000; // 20s cooldown between redirects
-        var INITIAL_GRACE_MS = 15000; // 15s ad-free grace period on first entry
-        var DIRECT_LINK = 'https://omg10.com/4/11880595';
-
-        // Record initial visit timestamp
+        var COOLDOWN_MS = 20000; // 20s cooldown between popunders
+        var lastPopTime = 0;
         try {
-          if (!sessionStorage.getItem('mf_entry_time')) {
-            sessionStorage.setItem('mf_entry_time', Date.now().toString());
-          }
+          lastPopTime = parseInt(sessionStorage.getItem('mf_pop_cooldown') || '0', 10);
         } catch (e) {}
 
-        function isCooldownActive() {
-          var now = Date.now();
-          try {
-            var entryTime = parseInt(sessionStorage.getItem('mf_entry_time') || '0', 10);
-            if (entryTime && (now - entryTime < INITIAL_GRACE_MS)) {
-              return true; // Inside initial 15s entry grace period
-            }
-            var lastRedirect = parseInt(sessionStorage.getItem('mf_last_redirect') || '0', 10);
-            if (lastRedirect && (now - lastRedirect < COOLDOWN_MS)) {
-              return true; // Inside 20s cooldown window
-            }
-          } catch (e) {}
-          return false;
-        }
-
-        function markRedirectTriggered() {
-          try {
-            sessionStorage.setItem('mf_last_redirect', Date.now().toString());
-          } catch (e) {}
-        }
-
-        // 1. Strict Cooldown on window.open: blocks any script from spamming popups within 20s
         var origOpen = window.open;
         window.open = function(url, target, features) {
-          var isPopup = !target || target === '_blank';
+          // Detect popunder or popup window opens
+          var isPopup = !target || target === '_blank' || target === '_new';
           if (isPopup) {
-            if (isCooldownActive()) {
-              // Within 20s cooldown: suppress popup!
+            var now = Date.now();
+            if (lastPopTime && (now - lastPopTime < COOLDOWN_MS)) {
+              // Within 20s cooldown: suppress duplicate popunder
               return null;
             }
-            markRedirectTriggered();
+            // Allow popunder and start 20s cooldown
+            lastPopTime = now;
+            try {
+              sessionStorage.setItem('mf_pop_cooldown', now.toString());
+            } catch (e) {}
           }
           return origOpen.apply(window, arguments);
         };
-
-        // 2. Controlled user click handler: triggers redirect once, then locks for 20s
-        document.addEventListener('click', function(e) {
-          if (isCooldownActive()) {
-            return; // In 20s cooldown: free browsing, no redirect!
-          }
-
-          var target = e.target;
-          if (target && typeof target.closest === 'function') {
-            // Never redirect when user is typing, pasting, or clicking inputs
-            if (target.closest('input, textarea, select, .url-input-wrapper, button[title*="Paste"], .btn-paste-primary')) {
-              return;
-            }
-            // Never redirect on internal tool navigation links
-            var a = target.closest('a');
-            if (a) {
-              var href = a.getAttribute('href');
-              if (href && (href.startsWith('/') || href.startsWith('#'))) {
-                return;
-              }
-            }
-          }
-
-          // Trigger one redirect to Monetag direct link and activate 20s cooldown
-          markRedirectTriggered();
-          try {
-            origOpen.call(window, DIRECT_LINK, '_blank', 'noopener,noreferrer');
-          } catch (err) {}
-        }, false);
-
-        // 3. Staggered Monetag Suite Loading
-        function injectMonetag(src, zone) {
-          if (document.querySelector('script[data-zone="' + zone + '"]')) return;
-          var s = document.createElement('script');
-          s.dataset.zone = zone;
-          s.src = src;
-          s.async = true;
-          s.setAttribute('data-cfasync', 'false');
-          var target = [document.documentElement, document.body, document.head].filter(Boolean).pop();
-          if (target) target.appendChild(s);
-        }
-
-        // In-Page Push (Zone 11880513) - Floating notification at 5s
-        setTimeout(function() {
-          injectMonetag('https://nap5k.com/tag.min.js', '11880513');
-        }, 5000);
-
-        // Vignette Banner (Zone 11880602) - Transition card at 10s
-        setTimeout(function() {
-          injectMonetag('https://n6wxm.com/vignette.min.js', '11880602');
-        }, 10000);
       })();
     </script>
+    <!-- Monetag Vignette Banner -->
+    <script>(function(s){s.dataset.zone='11880602',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+    <!-- Monetag In-Page Push -->
+    <script>(function(s){s.dataset.zone='11880513',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+    <!-- Adsterra Popunder Script -->
+    <script src="https://pl31478899.profitableratecpmnetwork.com/e6/46/f6/e646f6d5d2dd7ddd81f2a78ddd7989b3.js"></script>
     <!-- Adsterra Social Bar -->
     <script src="https://pl31478897.profitableratecpmnetwork.com/15/85/ea/1585eae8675314ca6c01143c6d125e61.js"></script>
     <title>MediaFlow — Download YouTube &amp; Instagram Videos Free Without Watermark</title>
