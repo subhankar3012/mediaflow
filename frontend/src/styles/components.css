@@ -3310,3 +3310,119 @@
   padding: 1px 4px;
   margin-left: 4px;
 }
+
+/* ══════════════════════════════════════
+   Desktop Side Gutter Skyscraper Ads
+   ══════════════════════════════════════ */
+
+.desktop-gutter-rail {
+  display: none;
+}
+
+@media (min-width: 1200px) {
+  .desktop-gutter-rail {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 96px;
+    z-index: 35;
+    pointer-events: auto;
+    transition: opacity var(--transition-normal);
+  }
+
+  .desktop-gutter-left {
+    left: max(16px, calc(50% - 630px));
+  }
+
+  .desktop-gutter-right {
+    right: max(16px, calc(50% - 630px));
+  }
+
+  .desktop-gutter-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--slate-200, #e2e8f0);
+    border-radius: var(--radius-xl, 14px);
+    padding: 8px 6px;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.06);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 176px;
+    box-sizing: border-box;
+  }
+
+  .desktop-gutter-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px 6px 4px;
+    border-bottom: 1px solid var(--slate-100, #f1f5f9);
+    margin-bottom: 6px;
+  }
+
+  .desktop-gutter-badge {
+    font-size: 0.625rem;
+    font-family: var(--font-mono, monospace);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--slate-400, #94a3b8);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .desktop-gutter-badge-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background-color: var(--brand-primary, #2563eb);
+    display: inline-block;
+  }
+
+  .desktop-gutter-close {
+    background: none;
+    border: none;
+    padding: 2px 5px;
+    cursor: pointer;
+    color: var(--slate-400, #94a3b8);
+    font-size: 0.75rem;
+    line-height: 1;
+    border-radius: 4px;
+    transition: color var(--transition-fast), background-color var(--transition-fast);
+  }
+
+  .desktop-gutter-close:hover {
+    color: var(--slate-700, #334155);
+    background-color: var(--slate-100, #f1f5f9);
+  }
+
+  .desktop-gutter-body {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}
+
+@media (min-width: 1440px) {
+  .desktop-gutter-rail {
+    top: 105px;
+  }
+  .desktop-gutter-left {
+    left: max(24px, calc(50% - 650px));
+  }
+  .desktop-gutter-right {
+    right: max(24px, calc(50% - 650px));
+  }
+}
+
+@media (max-width: 1199px) {
+  .desktop-gutter-rail {
+    display: none !important;
+  }
+}
+

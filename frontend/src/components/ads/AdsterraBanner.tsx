@@ -12,15 +12,21 @@ export interface AdsterraBannerProps {
     | 'native'
     | 'inline'
     | 'skyscraper'
+    | 'skyscraper-left'
+    | 'skyscraper-right'
+    | 'skyscraper160x600'
+    | 'skyscraper160x300'
     | string;
   className?: string;
   slotId?: string;
+  hideLabel?: boolean;
 }
 
 export const AdsterraBanner: React.FC<AdsterraBannerProps> = memo(({
   slotType = 'top',
   className = '',
   slotId,
+  hideLabel = false,
 }) => {
   const [isMobile, setIsMobile] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -69,10 +75,18 @@ export const AdsterraBanner: React.FC<AdsterraBannerProps> = memo(({
     key = isMobile ? appConfig.adsterraBanners.mobile320x50 : appConfig.adsterraBanners.banner468x60;
     width = isMobile ? 320 : 468;
     height = isMobile ? 50 : 60;
-  } else if (slotType === 'skyscraper') {
-    key = appConfig.adsterraBanners.skyscraper160x300;
+  } else if (slotType === 'skyscraper-left' || slotType === 'skyscraper160x600') {
+    key = appConfig.adsterraBanners.skyscraper160x600 || '75d42770ad9b0b3039cf57a7e55e9e62';
+    width = 160;
+    height = 600;
+  } else if (slotType === 'skyscraper-right' || slotType === 'skyscraper160x300') {
+    key = appConfig.adsterraBanners.skyscraper160x300 || '2dc4ff74d0f64b72e28e643c3d1676d8';
     width = 160;
     height = 300;
+  } else if (slotType === 'skyscraper') {
+    key = appConfig.adsterraBanners.skyscraper160x600 || appConfig.adsterraBanners.skyscraper160x300;
+    width = 160;
+    height = 600;
   } else if (slotType === 'bottom') {
     // Bottom slot: Leaderboard 728x90 on desktop, 320x50 on mobile
     key = isMobile ? appConfig.adsterraBanners.mobile320x50 : appConfig.adsterraBanners.leaderboard728x90;
@@ -181,27 +195,29 @@ export const AdsterraBanner: React.FC<AdsterraBannerProps> = memo(({
       aria-label="Sponsored Content"
       style={{
         width: '100%',
-        margin: slotType === 'processing' ? '0.75rem auto 0.25rem auto' : '1.5rem auto',
+        margin: slotType.includes('skyscraper') ? '0 auto' : slotType === 'processing' ? '0.75rem auto 0.25rem auto' : '1.5rem auto',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <div
-        style={{
-          fontSize: '0.625rem',
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          color: 'var(--slate-400)',
-          marginBottom: '4px',
-          fontFamily: 'var(--font-mono)',
-          textAlign: 'center',
-          userSelect: 'none',
-        }}
-      >
-        {isNative ? 'Sponsored Recommendations' : 'Advertisement'}
-      </div>
+      {!hideLabel && (
+        <div
+          style={{
+            fontSize: '0.625rem',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'var(--slate-400)',
+            marginBottom: '4px',
+            fontFamily: 'var(--font-mono)',
+            textAlign: 'center',
+            userSelect: 'none',
+          }}
+        >
+          {isNative ? 'Sponsored Recommendations' : 'Advertisement'}
+        </div>
+      )}
       <iframe
         ref={iframeRef}
         title={`Adsterra ${slotType} Ad`}
