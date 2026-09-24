@@ -16,54 +16,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="preconnect" href="https://i.ytimg.com" crossorigin />
-    <script>
-      /* Protect all internal tool links from popup/redirect ad scripts */
-      (function() {
-        function getInternalToolLink(target) {
-          if (!target || typeof target.closest !== 'function') return null;
-          var a = target.closest('a');
-          if (!a) return null;
-          var href = a.getAttribute('href');
-          if (!href) return null;
-          if (
-            href.startsWith('/') ||
-            href.startsWith('#') ||
-            href.indexOf('download.strengerchat.in') !== -1 ||
-            (window.location.host && href.indexOf(window.location.host) !== -1)
-          ) {
-            return a;
-          }
-          return null;
-        }
-
-        var pointerEvents = ['pointerdown', 'mousedown', 'touchstart', 'pointerup', 'mouseup', 'touchend'];
-        for (var i = 0; i < pointerEvents.length; i++) {
-          window.addEventListener(pointerEvents[i], function(e) {
-            if (getInternalToolLink(e.target)) {
-              e.stopImmediatePropagation();
-            }
-          }, true);
-        }
-
-        window.addEventListener('click', function(e) {
-          if (e.button !== 0 || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-          var link = getInternalToolLink(e.target);
-          if (link) {
-            e.stopImmediatePropagation();
-            var href = link.getAttribute('href');
-            if (href && !href.startsWith('#')) {
-              e.preventDefault();
-              var cleanPath = href.replace(/^https?:\/\/[^\/]+/, '');
-              if (cleanPath && cleanPath !== window.location.pathname) {
-                window.history.pushState({}, '', cleanPath);
-                window.dispatchEvent(new PopStateEvent('popstate'));
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }
-            }
-          }
-        }, true);
-      })();
-    </script>
+    <!-- Monetag Official Tag (Loaded once in <head>, no duplicate injection) -->
+    <script src="https://quge5.com/88/tag.min.js" data-zone="285252" async data-cfasync="false"></script>
+    <!-- Adsterra Network Tags -->
     <script src="https://pl31478897.profitableratecpmnetwork.com/15/85/ea/1585eae8675314ca6c01143c6d125e61.js"></script>
     <script src="https://pl31478899.profitableratecpmnetwork.com/e6/46/f6/e646f6d5d2dd7ddd81f2a78ddd7989b3.js"></script>
     <title>MediaFlow — Download YouTube &amp; Instagram Videos Free Without Watermark</title>

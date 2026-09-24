@@ -24,11 +24,8 @@ export const Link: React.FC<LinkProps> = ({
   const isActive = pathname === target;
 
   const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
-    // Prevent any ad network listeners from hijacking internal tool navigation
+    // Prevent internal tool navigation clicks from bubbling to global ad popunder listeners
     e.stopPropagation();
-    if (e.nativeEvent) {
-      e.nativeEvent.stopImmediatePropagation?.();
-    }
 
     if (onClick) {
       onClick(e);
@@ -54,14 +51,6 @@ export const Link: React.FC<LinkProps> = ({
       href={target}
       className={combinedClass}
       onClick={handleClick}
-      onMouseDown={(e) => {
-        e.stopPropagation();
-        e.nativeEvent?.stopImmediatePropagation?.();
-      }}
-      onTouchStart={(e) => {
-        e.stopPropagation();
-        e.nativeEvent?.stopImmediatePropagation?.();
-      }}
       aria-current={isActive ? 'page' : undefined}
       {...props}
     >

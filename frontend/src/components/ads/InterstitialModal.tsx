@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { appConfig } from '../../config/appConfig';
-import { triggerMonetagAd } from '../../utils/monetag';
 import { AdsterraBanner } from './AdsterraBanner';
 
 export interface InterstitialModalProps {
@@ -41,9 +40,6 @@ export const InterstitialModal: React.FC<InterstitialModalProps> = ({
 
     setSecondsLeft(initialSeconds);
     completedRef.current = false;
-
-    // Trigger Monetag tag
-    triggerMonetagAd();
 
     if (initialSeconds <= 0) {
       handleComplete();
