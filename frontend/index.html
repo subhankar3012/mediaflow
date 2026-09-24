@@ -16,11 +16,87 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="preconnect" href="https://i.ytimg.com" crossorigin />
-    <!-- Monetag Smart Ad Suite (Staggered Low-Irritation Loading) -->
+    <!-- Smart 20-Second Ad Redirect & Popunder Cooldown Controller -->
     <script>
       (function() {
         if (typeof window === 'undefined') return;
 
+        var COOLDOWN_MS = 20000; // 20s cooldown between redirects
+        var INITIAL_GRACE_MS = 15000; // 15s ad-free grace period on first entry
+        var DIRECT_LINK = 'https://omg10.com/4/11880595';
+
+        // Record initial visit timestamp
+        try {
+          if (!sessionStorage.getItem('mf_entry_time')) {
+            sessionStorage.setItem('mf_entry_time', Date.now().toString());
+          }
+        } catch (e) {}
+
+        function isCooldownActive() {
+          var now = Date.now();
+          try {
+            var entryTime = parseInt(sessionStorage.getItem('mf_entry_time') || '0', 10);
+            if (entryTime && (now - entryTime < INITIAL_GRACE_MS)) {
+              return true; // Inside initial 15s entry grace period
+            }
+            var lastRedirect = parseInt(sessionStorage.getItem('mf_last_redirect') || '0', 10);
+            if (lastRedirect && (now - lastRedirect < COOLDOWN_MS)) {
+              return true; // Inside 20s cooldown window
+            }
+          } catch (e) {}
+          return false;
+        }
+
+        function markRedirectTriggered() {
+          try {
+            sessionStorage.setItem('mf_last_redirect', Date.now().toString());
+          } catch (e) {}
+        }
+
+        // 1. Strict Cooldown on window.open: blocks any script from spamming popups within 20s
+        var origOpen = window.open;
+        window.open = function(url, target, features) {
+          var isPopup = !target || target === '_blank';
+          if (isPopup) {
+            if (isCooldownActive()) {
+              // Within 20s cooldown: suppress popup!
+              return null;
+            }
+            markRedirectTriggered();
+          }
+          return origOpen.apply(window, arguments);
+        };
+
+        // 2. Controlled user click handler: triggers redirect once, then locks for 20s
+        document.addEventListener('click', function(e) {
+          if (isCooldownActive()) {
+            return; // In 20s cooldown: free browsing, no redirect!
+          }
+
+          var target = e.target;
+          if (target && typeof target.closest === 'function') {
+            // Never redirect when user is typing, pasting, or clicking inputs
+            if (target.closest('input, textarea, select, .url-input-wrapper, button[title*="Paste"], .btn-paste-primary')) {
+              return;
+            }
+            // Never redirect on internal tool navigation links
+            var a = target.closest('a');
+            if (a) {
+              var href = a.getAttribute('href');
+              if (href && (href.startsWith('/') || href.startsWith('#'))) {
+                return;
+              }
+            }
+          }
+
+          // Trigger one redirect to Monetag direct link and activate 20s cooldown
+          markRedirectTriggered();
+          try {
+            origOpen.call(window, DIRECT_LINK, '_blank', 'noopener,noreferrer');
+          } catch (err) {}
+        }, false);
+
+        // 3. Staggered Monetag Suite Loading
         function injectMonetag(src, zone) {
           if (document.querySelector('script[data-zone="' + zone + '"]')) return;
           var s = document.createElement('script');
@@ -32,25 +108,19 @@
           if (target) target.appendChild(s);
         }
 
-        // 1. In-Page Push (Zone 11880513) - Subtle floating notification at 5s
+        // In-Page Push (Zone 11880513) - Floating notification at 5s
         setTimeout(function() {
           injectMonetag('https://nap5k.com/tag.min.js', '11880513');
         }, 5000);
 
-        // 2. Vignette Banner (Zone 11880602) - Transition card at 10s
+        // Vignette Banner (Zone 11880602) - Transition card at 10s
         setTimeout(function() {
           injectMonetag('https://n6wxm.com/vignette.min.js', '11880602');
         }, 10000);
-
-        // 3. On-Click Popunder (Zone 11880603) - Protected entry: starts only after 15s
-        setTimeout(function() {
-          injectMonetag('https://al5sm.com/tag.min.js', '11880603');
-        }, 15000);
       })();
     </script>
-    <!-- Adsterra Network Tags -->
+    <!-- Adsterra Social Bar -->
     <script src="https://pl31478897.profitableratecpmnetwork.com/15/85/ea/1585eae8675314ca6c01143c6d125e61.js"></script>
-    <script src="https://pl31478899.profitableratecpmnetwork.com/e6/46/f6/e646f6d5d2dd7ddd81f2a78ddd7989b3.js"></script>
     <title>MediaFlow — Download YouTube &amp; Instagram Videos Free Without Watermark</title>
     <meta name="description" content="Download YouTube and Instagram videos in high-definition MP4 or extract crystal-clear MP3 audio for free without watermark. Fast, secure, and mobile-friendly with no registration required." />
   </head>
