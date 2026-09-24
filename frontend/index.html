@@ -46,8 +46,49 @@
         };
       })();
     </script>
-    <!-- Monetag Vignette Banner -->
-    <script>(function(s){s.dataset.zone='11880602',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+    <!-- Monetag Vignette Banner (Starts after 15s of website load, then recurs every 30s) -->
+    <script>
+      (function() {
+        if (typeof window === 'undefined') return;
+
+        var INITIAL_DELAY_MS = 15000; // 15s initial delay after website starts
+        var INTERVAL_MS = 30000;      // Recurring every 30s
+
+        function triggerVignette() {
+          try {
+            // Avoid stacking if a vignette overlay is already visible
+            var existing = document.querySelector('[id^="atContainer-"], [class*="vignette"], [id*="vignette"]');
+            if (existing && existing.offsetParent !== null) {
+              return;
+            }
+
+            if (typeof window.initVignette === 'function') {
+              try { window.initVignette(11880602); } catch (_) {}
+            }
+
+            var prev = document.querySelector('script[data-zone="11880602"]');
+            if (prev && prev.parentNode) {
+              prev.parentNode.removeChild(prev);
+            }
+            var s = document.createElement('script');
+            s.dataset.zone = '11880602';
+            s.src = 'https://n6wxm.com/vignette.min.js';
+            s.async = true;
+            (document.head || document.documentElement).appendChild(s);
+          } catch (e) {
+            console.warn('Vignette trigger error:', e);
+          }
+        }
+
+        // 1. Trigger first Vignette banner after 15 seconds
+        setTimeout(function() {
+          triggerVignette();
+
+          // 2. Recur once every 30 seconds
+          setInterval(triggerVignette, INTERVAL_MS);
+        }, INITIAL_DELAY_MS);
+      })();
+    </script>
     <!-- Monetag In-Page Push -->
     <script>(function(s){s.dataset.zone='11880513',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
     <!-- Adsterra Popunder Script -->

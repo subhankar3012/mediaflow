@@ -34,6 +34,13 @@ export function loadInPagePush(): void {
 
 /** Vignette Banner (fullscreen modal on transitions, high CPM) */
 export function loadVignette(): void {
+  if (typeof window === 'undefined') return;
+  if (typeof (window as any).initVignette === 'function') {
+    try {
+      (window as any).initVignette(11880602);
+      return;
+    } catch (_) {}
+  }
   injectMonetagScript('https://n6wxm.com/vignette.min.js', '11880602');
 }
 
