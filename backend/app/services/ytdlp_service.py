@@ -308,12 +308,12 @@ class YtDlpService:
             "ignoreerrors": True,
         }
 
-        # For YouTube: specify android, visionos, and ios player clients to extract ALL resolution tiers
-        # without being throttled to android 360p-only fallback or triggering SABR missing formats
+        # For YouTube: specify visionos player client to extract ALL resolution tiers
+        # without PO-token blockage, android SABR missing formats, or multi-client latency
         if is_youtube:
             opts["extractor_args"] = {
                 "youtube": {
-                    "player_client": ["android", "visionos", "ios"]
+                    "player_client": ["visionos"]
                 }
             }
 
@@ -585,6 +585,15 @@ class YtDlpService:
         # Always configure JS runtime
         self._configure_js_runtime(opts)
 
+        # For YouTube: specify visionos player client so downloads do not trigger
+        # mweb/ios GVS PO-Token requirements or bot verification errors
+        if is_youtube:
+            opts["extractor_args"] = {
+                "youtube": {
+                    "player_client": ["visionos"]
+                }
+            }
+
         if use_cookies:
             cookiefile = self._get_cookiefile()
             if cookiefile:
@@ -646,7 +655,7 @@ class YtDlpService:
         has_cookies = bool(self._get_cookiefile())
         has_yt_cookies = self._has_domain_cookies("youtube.com")
         if is_youtube:
-            strategies = [True, False] if (has_cookies and has_yt_cookies) else [False]
+            strategies = [False, True] if (has_cookies and has_yt_cookies) else [False]
         else:
             strategies = [True, False] if has_cookies else [False]
         last_error = None

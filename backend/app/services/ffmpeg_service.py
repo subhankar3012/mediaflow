@@ -144,11 +144,16 @@ class FFmpegService:
                 "-shortest"
             ])
 
-        # Decide video codec parameters
-        if video_is_h264:
+        # Decide video codec parameters: stream copy H.264, AV1, and VP9 in MP4 for instant (< 1s) muxing
+        video_supports_copy = (
+            video_is_h264 or
+            "av01" in vcodec_clean or "av1" in vcodec_clean or
+            "vp9" in vcodec_clean or "vp09" in vcodec_clean
+        )
+        if video_supports_copy:
             cmd.extend(["-c:v", "copy"])
         else:
-            logger.info(f"Transcoding non-H.264 video ({video_codec}) to libx264 (yuv420p)")
+            logger.info(f"Transcoding legacy video codec ({video_codec}) to libx264 (yuv420p)")
             cmd.extend(["-c:v", "libx264", "-preset", "ultrafast", "-crf", "24", "-pix_fmt", "yuv420p"])
 
         # Decide audio codec parameters
