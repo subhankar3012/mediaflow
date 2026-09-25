@@ -124,12 +124,51 @@ class YtDlpService:
             logger.warning(f"Failed to validate cookie file: {e}")
             return None
 
+    _cached_cookie_url: Optional[str] = None
+    _cached_cookie_path: Optional[str] = None
+    _cached_cookie_fetch_time: float = 0.0
+
+    @classmethod
+    def _fetch_cookies_from_url(cls, url: str) -> Optional[str]:
+        """Fetches remote cookies from a secret URL (Gist/Pastebin/S3) with 10-minute caching."""
+        import time
+        now = time.time()
+        if cls._cached_cookie_path and cls._cached_cookie_url == url and (now - cls._cached_cookie_fetch_time < 600):
+            if os.path.exists(cls._cached_cookie_path):
+                return cls._cached_cookie_path
+
+        try:
+            import urllib.request
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                content = resp.read().decode("utf-8", errors="ignore")
+            path = cls._sanitize_and_validate_cookies(content)
+            if path:
+                cls._cached_cookie_url = url
+                cls._cached_cookie_path = path
+                cls._cached_cookie_fetch_time = now
+                logger.info(f"Successfully fetched and validated cookies from YTDLP_COOKIES_URL: {url[:30]}...")
+                return path
+        except Exception as e:
+            logger.warning(f"Failed to fetch cookies from YTDLP_COOKIES_URL: {e}")
+
+        return cls._cached_cookie_path if (cls._cached_cookie_path and os.path.exists(cls._cached_cookie_path)) else None
+
     @classmethod
     def _get_cookiefile(cls) -> Optional[str]:
         """Resolves active cookies file from environment variable, explicit path, or default location."""
         # 1. Plaintext or base64 cookies provided via YTDLP_COOKIES environment variable
         if getattr(settings, "YTDLP_COOKIES", None) and settings.YTDLP_COOKIES.strip():
             path = cls._sanitize_and_validate_cookies(settings.YTDLP_COOKIES)
+            if path:
+                return path
+
+        # 1.5 Remote URL for cookies (e.g. Secret GitHub Gist raw URL)
+        if getattr(settings, "YTDLP_COOKIES_URL", None) and settings.YTDLP_COOKIES_URL.strip():
+            path = cls._fetch_cookies_from_url(settings.YTDLP_COOKIES_URL.strip())
             if path:
                 return path
 
@@ -151,6 +190,23 @@ class YtDlpService:
         return None
 
     @classmethod
+    def _has_authenticated_youtube_cookies(cls) -> bool:
+        """Checks if the cookies file contains actual logged-in YouTube session cookies (not guest tokens)."""
+        cookiefile = cls._get_cookiefile()
+        if not cookiefile or not os.path.exists(cookiefile):
+            return False
+        try:
+            with open(cookiefile, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+            if "youtube.com" not in content.lower():
+                return False
+            # Valid signed-in account tokens
+            auth_tokens = ["LOGIN_INFO", "SAPISID", "SSID", "HSID", "__Secure-3PSID", "__Secure-1PSID"]
+            return any(tok in content for tok in auth_tokens)
+        except Exception:
+            return False
+
+    @classmethod
     def get_cookies_status(cls) -> Dict[str, Any]:
         """Returns structured status of loaded cookies for health inspections."""
         cookiefile = cls._get_cookiefile()
@@ -160,6 +216,7 @@ class YtDlpService:
                 "count": 0,
                 "valid": False,
                 "has_youtube": False,
+                "has_youtube_authenticated": False,
                 "has_instagram": False,
             }
         try:
@@ -172,6 +229,7 @@ class YtDlpService:
                 "count": count,
                 "valid": count > 0,
                 "has_youtube": cls._has_domain_cookies("youtube.com"),
+                "has_youtube_authenticated": cls._has_authenticated_youtube_cookies(),
                 "has_instagram": cls._has_domain_cookies("instagram.com"),
             }
         except Exception:
@@ -180,6 +238,7 @@ class YtDlpService:
                 "count": 0,
                 "valid": False,
                 "has_youtube": cls._has_domain_cookies("youtube.com"),
+                "has_youtube_authenticated": False,
                 "has_instagram": cls._has_domain_cookies("instagram.com"),
             }
 
@@ -308,14 +367,21 @@ class YtDlpService:
             "ignoreerrors": True,
         }
 
-        # For YouTube: specify visionos player client to extract ALL resolution tiers
-        # without PO-token blockage, android SABR missing formats, or multi-client latency
+        # For YouTube: specify visionos player client when unauthenticated
+        # or authed clients when authenticated
         if is_youtube:
-            opts["extractor_args"] = {
-                "youtube": {
-                    "player_client": ["visionos"]
+            if use_cookies:
+                opts["extractor_args"] = {
+                    "youtube": {
+                        "player_client": ["web_embedded", "tv_downgraded", "web"]
+                    }
                 }
-            }
+            else:
+                opts["extractor_args"] = {
+                    "youtube": {
+                        "player_client": ["visionos"]
+                    }
+                }
 
         # Always configure JS runtime so yt-dlp can solve challenges on Linux/Docker
         self._configure_js_runtime(opts)
@@ -324,6 +390,10 @@ class YtDlpService:
             cookiefile = self._get_cookiefile()
             if cookiefile:
                 opts["cookiefile"] = cookiefile
+
+        # Proxy support
+        if getattr(settings, "YTDLP_PROXY", None) and settings.YTDLP_PROXY.strip():
+            opts["proxy"] = settings.YTDLP_PROXY.strip()
 
         return opts
 
@@ -337,14 +407,12 @@ class YtDlpService:
 
         is_youtube = ("youtube.com" in url.lower() or "youtu.be" in url.lower())
         has_cookies = bool(self._get_cookiefile())
-        has_yt_cookies = self._has_domain_cookies("youtube.com")
+        has_auth_yt = self._has_authenticated_youtube_cookies()
 
         # For YouTube: public videos extract cleanly with Node/Deno JS solvers WITHOUT cookies.
-        # Expired or Instagram-only cookies break YouTube authed clients and cause empty formats or bot errors.
-        # Only use cookies on YouTube if genuine youtube.com cookies exist in the cookie file!
-        # For Instagram: cookies are essential, so try True first, then False.
+        # Only use cookies on YouTube if genuine authenticated youtube.com cookies exist.
         if is_youtube:
-            strategies = [False, True] if (has_cookies and has_yt_cookies) else [False]
+            strategies = [False, True] if (has_cookies and has_auth_yt) else [False]
         else:
             strategies = [True, False] if has_cookies else [False]
 
@@ -585,19 +653,29 @@ class YtDlpService:
         # Always configure JS runtime
         self._configure_js_runtime(opts)
 
-        # For YouTube: specify visionos player client so downloads do not trigger
-        # mweb/ios GVS PO-Token requirements or bot verification errors
+        # For YouTube: specify player client depending on whether cookies are in use
         if is_youtube:
-            opts["extractor_args"] = {
-                "youtube": {
-                    "player_client": ["visionos"]
+            if use_cookies:
+                opts["extractor_args"] = {
+                    "youtube": {
+                        "player_client": ["web_embedded", "tv_downgraded", "web"]
+                    }
                 }
-            }
+            else:
+                opts["extractor_args"] = {
+                    "youtube": {
+                        "player_client": ["visionos"]
+                    }
+                }
 
         if use_cookies:
             cookiefile = self._get_cookiefile()
             if cookiefile:
                 opts["cookiefile"] = cookiefile
+
+        # Proxy support
+        if getattr(settings, "YTDLP_PROXY", None) and settings.YTDLP_PROXY.strip():
+            opts["proxy"] = settings.YTDLP_PROXY.strip()
 
         return opts
 
@@ -653,9 +731,11 @@ class YtDlpService:
 
         is_youtube = ("youtube.com" in url.lower() or "youtu.be" in url.lower())
         has_cookies = bool(self._get_cookiefile())
-        has_yt_cookies = self._has_domain_cookies("youtube.com")
+        has_auth_yt = self._has_authenticated_youtube_cookies()
         if is_youtube:
-            strategies = [False, True] if (has_cookies and has_yt_cookies) else [False]
+            # If genuine authenticated YouTube cookies exist, try authenticated first, then unauthenticated.
+            # If no authenticated cookies exist, use unauthenticated visionos (or proxy).
+            strategies = [True, False] if (has_cookies and has_auth_yt) else [False]
         else:
             strategies = [True, False] if has_cookies else [False]
         last_error = None

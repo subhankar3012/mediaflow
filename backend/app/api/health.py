@@ -35,6 +35,7 @@ async def health_check():
 
     from app.services.ytdlp_service import ytdlp_service
     cookie_status = ytdlp_service.get_cookies_status()
+    proxy_set = bool(getattr(settings, "YTDLP_PROXY", None) and settings.YTDLP_PROXY.strip())
 
     return {
         "status": "healthy" if all_ok else "degraded",
@@ -53,7 +54,9 @@ async def health_check():
         "cookies_count": cookie_status["count"],
         "cookies_valid": cookie_status["valid"],
         "cookies_youtube": cookie_status.get("has_youtube", False),
+        "cookies_youtube_authenticated": cookie_status.get("has_youtube_authenticated", False),
         "cookies_instagram": cookie_status.get("has_instagram", False),
+        "proxy_configured": proxy_set,
         "storage": "ok" if storage_ok else "error",
-        "build_version": "v1.1.1-shorts-and-cookie-domain-check",
+        "build_version": "v1.1.2-proxy-and-authed-cookies",
     }
