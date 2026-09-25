@@ -367,21 +367,14 @@ class YtDlpService:
             "ignoreerrors": True,
         }
 
-        # For YouTube: specify visionos player client when unauthenticated
-        # or authed clients when authenticated
+        # For YouTube: specify visionos player client to extract ALL resolution tiers
+        # without PO-token blockage, android SABR missing formats, or multi-client latency
         if is_youtube:
-            if use_cookies:
-                opts["extractor_args"] = {
-                    "youtube": {
-                        "player_client": ["web_embedded", "tv_downgraded", "web"]
-                    }
+            opts["extractor_args"] = {
+                "youtube": {
+                    "player_client": ["visionos"]
                 }
-            else:
-                opts["extractor_args"] = {
-                    "youtube": {
-                        "player_client": ["visionos"]
-                    }
-                }
+            }
 
         # Always configure JS runtime so yt-dlp can solve challenges on Linux/Docker
         self._configure_js_runtime(opts)
@@ -653,20 +646,14 @@ class YtDlpService:
         # Always configure JS runtime
         self._configure_js_runtime(opts)
 
-        # For YouTube: specify player client depending on whether cookies are in use
+        # For YouTube: specify visionos player client so downloads do not trigger
+        # mweb/ios GVS PO-Token requirements, web reload errors, or 360p fallbacks
         if is_youtube:
-            if use_cookies:
-                opts["extractor_args"] = {
-                    "youtube": {
-                        "player_client": ["web_embedded", "tv_downgraded", "web"]
-                    }
+            opts["extractor_args"] = {
+                "youtube": {
+                    "player_client": ["visionos"]
                 }
-            else:
-                opts["extractor_args"] = {
-                    "youtube": {
-                        "player_client": ["visionos"]
-                    }
-                }
+            }
 
         if use_cookies:
             cookiefile = self._get_cookiefile()

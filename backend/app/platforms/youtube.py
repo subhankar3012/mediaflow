@@ -66,20 +66,25 @@ class YouTubeHandler(PlatformHandler):
         if m:
             h = int(m.group(1))
             min_h = TIER_LOWER_BOUNDS.get(h, int(h * 0.8))
-            # 1. Horizontal matching (height) & Vertical/Shorts matching (width)
-            # 2. Prefer H.264 video at requested tier + AAC audio
-            # 3. Best video at requested tier + best audio
-            # 4. Fallbacks to bestvideo+bestaudio/best
+            # Aspect-ratio aware matching:
+            # - For horizontal/landscape/square (aspect_ratio >= 1): resolution tier is determined by height (e.g. 1920x1080)
+            # - For vertical/portrait/Shorts (aspect_ratio < 1): resolution tier is determined by width (e.g. 1080x1920)
             return (
-                f"bestvideo[height<={h}][height>{min_h}][vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
-                f"bestvideo[width<={h}][width>{min_h}][vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
-                f"bestvideo[height<={h}][height>{min_h}]+bestaudio/"
-                f"bestvideo[width<={h}][width>{min_h}]+bestaudio/"
-                f"best[height<={h}][height>{min_h}]/"
-                f"best[width<={h}][width>{min_h}]/"
-                f"bestvideo[height<={h}]+bestaudio/"
-                f"bestvideo[width<={h}]+bestaudio/"
-                f"best[height<={h}]/best[width<={h}]/bestvideo+bestaudio/best"
+                # 1. Exact match with H.264 + AAC
+                f"bestvideo[aspect_ratio>=1][height<={h}][height>{min_h}][vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
+                f"bestvideo[aspect_ratio<1][width<={h}][width>{min_h}][vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
+                # 2. Exact tier match with any video codec + any audio
+                f"bestvideo[aspect_ratio>=1][height<={h}][height>{min_h}]+bestaudio/"
+                f"bestvideo[aspect_ratio<1][width<={h}][width>{min_h}]+bestaudio/"
+                # 3. Progressive/combined stream at requested tier
+                f"best[aspect_ratio>=1][height<={h}][height>{min_h}]/"
+                f"best[aspect_ratio<1][width<={h}][width>{min_h}]/"
+                # 4. Upper bound fallback
+                f"bestvideo[aspect_ratio>=1][height<={h}]+bestaudio/"
+                f"bestvideo[aspect_ratio<1][width<={h}]+bestaudio/"
+                f"best[aspect_ratio>=1][height<={h}]/"
+                f"best[aspect_ratio<1][width<={h}]/"
+                f"bestvideo+bestaudio/best"
             )
 
         if str(format_id).lower() in ("best", "default"):
