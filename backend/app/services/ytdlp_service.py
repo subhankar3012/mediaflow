@@ -367,14 +367,22 @@ class YtDlpService:
             "ignoreerrors": True,
         }
 
-        # For YouTube: specify visionos player client to extract ALL resolution tiers
-        # without PO-token blockage, android SABR missing formats, or multi-client latency
+        # For YouTube:
+        # - Unauthenticated: visionos player client extracts ALL resolution tiers without PO-token blockage
+        # - Authenticated: use authed web clients (web_embedded, tv_downgraded, web)
         if is_youtube:
-            opts["extractor_args"] = {
-                "youtube": {
-                    "player_client": ["visionos"]
+            if use_cookies:
+                opts["extractor_args"] = {
+                    "youtube": {
+                        "player_client": ["web_embedded", "tv_downgraded", "web"]
+                    }
                 }
-            }
+            else:
+                opts["extractor_args"] = {
+                    "youtube": {
+                        "player_client": ["visionos"]
+                    }
+                }
 
         # Always configure JS runtime so yt-dlp can solve challenges on Linux/Docker
         self._configure_js_runtime(opts)
@@ -646,14 +654,22 @@ class YtDlpService:
         # Always configure JS runtime
         self._configure_js_runtime(opts)
 
-        # For YouTube: specify visionos player client so downloads do not trigger
-        # mweb/ios GVS PO-Token requirements, web reload errors, or 360p fallbacks
+        # For YouTube:
+        # - Unauthenticated: visionos player client streams native HLS (m3u8) without 403 Forbidden
+        # - Authenticated: use authed web clients (web_embedded, tv_downgraded, web)
         if is_youtube:
-            opts["extractor_args"] = {
-                "youtube": {
-                    "player_client": ["visionos"]
+            if use_cookies:
+                opts["extractor_args"] = {
+                    "youtube": {
+                        "player_client": ["web_embedded", "tv_downgraded", "web"]
+                    }
                 }
-            }
+            else:
+                opts["extractor_args"] = {
+                    "youtube": {
+                        "player_client": ["visionos"]
+                    }
+                }
 
         if use_cookies:
             cookiefile = self._get_cookiefile()
@@ -720,9 +736,9 @@ class YtDlpService:
         has_cookies = bool(self._get_cookiefile())
         has_auth_yt = self._has_authenticated_youtube_cookies()
         if is_youtube:
-            # If genuine authenticated YouTube cookies exist, try authenticated first, then unauthenticated.
-            # If no authenticated cookies exist, use unauthenticated visionos (or proxy).
-            strategies = [True, False] if (has_cookies and has_auth_yt) else [False]
+            # For YouTube: Try unauthenticated visionos + m3u8 FIRST (immune to datacenter bot blocks and session rotation).
+            # If unauthenticated fails (e.g. age-restricted or private video), fallback to authenticated cookies.
+            strategies = [False, True] if (has_cookies and has_auth_yt) else [False]
         else:
             strategies = [True, False] if has_cookies else [False]
         last_error = None

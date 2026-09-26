@@ -58,5 +58,5 @@ async def health_check():
         "cookies_instagram": cookie_status.get("has_instagram", False),
         "proxy_configured": proxy_set,
         "storage": "ok" if storage_ok else "error",
-        "build_version": "v1.1.2-proxy-and-authed-cookies",
+        "build_version": "v1.1.3-native-hls-streaming",
     }

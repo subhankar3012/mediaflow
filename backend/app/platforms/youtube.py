@@ -58,28 +58,39 @@ class YouTubeHandler(PlatformHandler):
     def build_format_spec(self, format_id: str, output_format: str = "mp4", audio_only: bool = False) -> str:
         if audio_only:
             if format_id in ("audio_best", "best", "mp3"):
-                return "bestaudio[acodec^=mp4a]/bestaudio/best"
-            return f"{format_id}/bestaudio[acodec^=mp4a]/bestaudio/best"
+                return "bestaudio[protocol^=m3u8]/bestaudio[acodec^=mp4a]/bestaudio/best"
+            return f"{format_id}/bestaudio[protocol^=m3u8]/bestaudio[acodec^=mp4a]/bestaudio/best"
 
         # Check if format_id is a normalized resolution label like "1080p", "720p", etc.
         m = re.match(r"^(\d+)p$", str(format_id).strip().lower())
         if m:
             h = int(m.group(1))
             min_h = TIER_LOWER_BOUNDS.get(h, int(h * 0.8))
-            # Aspect-ratio aware matching:
+            # Aspect-ratio aware matching with native HLS (m3u8) priority:
+            # - YouTube natively serves unthrottled HLS (m3u8) streams to VisionOS without 403 Forbidden / bot blocks
             # - For horizontal/landscape/square (aspect_ratio >= 1): resolution tier is determined by height (e.g. 1920x1080)
             # - For vertical/portrait/Shorts (aspect_ratio < 1): resolution tier is determined by width (e.g. 1080x1920)
             return (
-                # 1. Exact match with H.264 + AAC
+                # 1. Exact tier match with HLS m3u8 (H.264 avc1 + m3u8 audio) - immune to bot/403 blocks
+                f"bestvideo[protocol^=m3u8][aspect_ratio>=1][height<={h}][height>{min_h}][vcodec^=avc1]+bestaudio[protocol^=m3u8]/"
+                f"bestvideo[protocol^=m3u8][aspect_ratio<1][width<={h}][width>{min_h}][vcodec^=avc1]+bestaudio[protocol^=m3u8]/"
+                # 2. Exact tier match with HLS m3u8 (any video codec + m3u8 audio)
+                f"bestvideo[protocol^=m3u8][aspect_ratio>=1][height<={h}][height>{min_h}]+bestaudio[protocol^=m3u8]/"
+                f"bestvideo[protocol^=m3u8][aspect_ratio<1][width<={h}][width>{min_h}]+bestaudio[protocol^=m3u8]/"
+                f"bestvideo[protocol^=m3u8][aspect_ratio>=1][height<={h}][height>{min_h}]+bestaudio/"
+                f"bestvideo[protocol^=m3u8][aspect_ratio<1][width<={h}][width>{min_h}]+bestaudio/"
+                # 3. Exact tier match with HTTPS DASH H.264
                 f"bestvideo[aspect_ratio>=1][height<={h}][height>{min_h}][vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
                 f"bestvideo[aspect_ratio<1][width<={h}][width>{min_h}][vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
-                # 2. Exact tier match with any video codec + any audio
+                # 4. Exact tier match with any video codec + any audio
                 f"bestvideo[aspect_ratio>=1][height<={h}][height>{min_h}]+bestaudio/"
                 f"bestvideo[aspect_ratio<1][width<={h}][width>{min_h}]+bestaudio/"
-                # 3. Progressive/combined stream at requested tier
+                # 5. Progressive/combined stream at requested tier
                 f"best[aspect_ratio>=1][height<={h}][height>{min_h}]/"
                 f"best[aspect_ratio<1][width<={h}][width>{min_h}]/"
-                # 4. Upper bound fallback
+                # 6. Upper bound fallback
+                f"bestvideo[protocol^=m3u8][aspect_ratio>=1][height<={h}]+bestaudio[protocol^=m3u8]/"
+                f"bestvideo[protocol^=m3u8][aspect_ratio<1][width<={h}]+bestaudio[protocol^=m3u8]/"
                 f"bestvideo[aspect_ratio>=1][height<={h}]+bestaudio/"
                 f"bestvideo[aspect_ratio<1][width<={h}]+bestaudio/"
                 f"best[aspect_ratio>=1][height<={h}]/"
@@ -88,9 +99,9 @@ class YouTubeHandler(PlatformHandler):
             )
 
         if str(format_id).lower() in ("best", "default"):
-            return "bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo+bestaudio/best"
+            return "bestvideo[protocol^=m3u8][vcodec^=avc1]+bestaudio[protocol^=m3u8]/bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo+bestaudio/best"
 
         # Specific legacy format ID (e.g. "18", "137")
-        return f"{format_id}+bestaudio[acodec^=mp4a]/{format_id}+bestaudio/{format_id}/best"
+        return f"{format_id}+bestaudio[protocol^=m3u8]/{format_id}+bestaudio[acodec^=mp4a]/{format_id}+bestaudio/{format_id}/best"
 
 youtube_handler = YouTubeHandler()
