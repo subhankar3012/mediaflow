@@ -149,7 +149,7 @@ class FFmpegService:
             cmd.extend(["-c:v", "copy"])
         else:
             logger.info(f"Transcoding non-H.264 video codec ({video_codec}) to libx264 (yuv420p)")
-            cmd.extend(["-c:v", "libx264", "-preset", "ultrafast", "-crf", "24", "-pix_fmt", "yuv420p"])
+            cmd.extend(["-c:v", "libx264", "-preset", "ultrafast", "-crf", "24", "-pix_fmt", "yuv420p", "-threads", "2"])
 
         # Decide audio codec parameters
         if not has_audio:
@@ -179,7 +179,7 @@ class FFmpegService:
         if proc.returncode != 0:
             err_output = stderr.decode("utf-8", errors="replace")
             logger.warning(f"Conversion attempt failed ({proc.returncode}), attempting full re-encode fallback: {err_output[:200]}")
-            fallback_cmd = [self.ffmpeg_path, "-y", "-threads", "1", "-i", str(video_path)]
+            fallback_cmd = [self.ffmpeg_path, "-y", "-threads", "2", "-i", str(video_path)]
             if audio_path and audio_path != video_path:
                 fallback_cmd.extend(["-i", str(audio_path), "-map", "0:v:0?", "-map", "1:a:0?"])
             elif has_audio:
@@ -192,7 +192,7 @@ class FFmpegService:
                 ])
 
             fallback_cmd.extend([
-                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-pix_fmt", "yuv420p",
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-pix_fmt", "yuv420p", "-threads", "2",
                 "-c:a", "aac", "-b:a", "192k",
                 "-movflags", "+faststart",
                 str(output_path)

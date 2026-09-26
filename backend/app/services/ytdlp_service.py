@@ -407,13 +407,18 @@ class YtDlpService:
         import yt_dlp
 
         is_youtube = ("youtube.com" in url.lower() or "youtu.be" in url.lower())
+        is_instagram = ("instagram.com" in url.lower())
         has_cookies = bool(self._get_cookiefile())
         has_auth_yt = self._has_authenticated_youtube_cookies()
+        has_ig_cookies = self._has_domain_cookies("instagram.com")
 
-        # For YouTube: public videos extract cleanly with Node/Deno JS solvers WITHOUT cookies.
-        # Only use cookies on YouTube if genuine authenticated youtube.com cookies exist.
+        # Platform-tailored authentication strategies:
+        # - YouTube: unauthenticated visionos first, authed cookies fallback
+        # - Instagram: only pass cookies if genuine instagram.com cookies exist (avoids YouTube cookie handshake penalty)
         if is_youtube:
             strategies = [False, True] if (has_cookies and has_auth_yt) else [False]
+        elif is_instagram:
+            strategies = [True, False] if has_ig_cookies else [False]
         else:
             strategies = [True, False] if has_cookies else [False]
 
@@ -733,12 +738,19 @@ class YtDlpService:
                 })
 
         is_youtube = ("youtube.com" in url.lower() or "youtu.be" in url.lower())
+        is_instagram = ("instagram.com" in url.lower())
         has_cookies = bool(self._get_cookiefile())
         has_auth_yt = self._has_authenticated_youtube_cookies()
+        has_ig_cookies = self._has_domain_cookies("instagram.com")
+
         if is_youtube:
             # For YouTube: Try unauthenticated visionos + m3u8 FIRST (immune to datacenter bot blocks and session rotation).
             # If unauthenticated fails (e.g. age-restricted or private video), fallback to authenticated cookies.
             strategies = [False, True] if (has_cookies and has_auth_yt) else [False]
+        elif is_instagram:
+            # For Instagram: Only use cookies if actual instagram.com cookies exist.
+            # Never pass YouTube-only cookies to Instagram as it causes request delays and retry overhead.
+            strategies = [True, False] if has_ig_cookies else [False]
         else:
             strategies = [True, False] if has_cookies else [False]
         last_error = None

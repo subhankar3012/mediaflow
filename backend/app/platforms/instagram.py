@@ -31,10 +31,23 @@ class InstagramHandler(PlatformHandler):
 
     def build_format_spec(self, format_id: str, output_format: str = "mp4", audio_only: bool = False) -> str:
         if audio_only:
-            return "bestaudio/best"
-        # Always request both video and audio streams for Instagram to prevent missing audio bug
+            return "bestaudio[acodec^=mp4a]/bestaudio/best"
+        # Always prioritize native H.264/AVC stream with AAC audio to enable instantaneous (< 0.5s) stream copying
+        # and prevent lengthy VP9/AV1 CPU transcoding delays.
         if format_id and format_id not in ("best", "default"):
-            return f"{format_id}+bestaudio/bestvideo+bestaudio/{format_id}/best"
-        return "bestvideo+bestaudio/best"
+            return (
+                f"{format_id}[vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
+                f"{format_id}+bestaudio[acodec^=mp4a]/"
+                f"{format_id}+bestaudio/"
+                f"bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
+                f"best[vcodec^=avc1]/"
+                f"bestvideo+bestaudio/{format_id}/best"
+            )
+        return (
+            "bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]/"
+            "best[vcodec^=avc1]/"
+            "bestvideo[vcodec^=avc1]+bestaudio/"
+            "bestvideo+bestaudio/best"
+        )
 
 instagram_handler = InstagramHandler()

@@ -442,6 +442,8 @@ class DownloadWorker:
                     f"Audio={audio_file.name if audio_file else ('embedded' if a_codec else 'none')} ({a_codec})"
                 )
 
+                await job_service.update_progress(job_id, progress=99.0, speed="Packaging MP4", eta="00:01")
+
                 await ffmpeg_service.transcode_to_compatible_mp4(
                     video_path=video_file,
                     audio_path=audio_file,

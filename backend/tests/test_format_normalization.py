@@ -243,9 +243,10 @@ def test_youtube_build_format_spec_respects_resolution():
 
 
 def test_instagram_build_format_spec_includes_audio():
-    """Verify Instagram handler always requests both video and audio to fix missing audio bug."""
+    """Verify Instagram handler prioritizes H.264 video with AAC audio and always requests audio."""
     spec = instagram_handler.build_format_spec("best")
-    assert spec == "bestvideo+bestaudio/best"
+    assert "bestaudio" in spec
+    assert "avc1" in spec
 
 
 # --- FFprobe Validation Tests ---
