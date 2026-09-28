@@ -4,7 +4,7 @@ import httpx
 from fastapi import APIRouter, Request, Response, HTTPException, status
 from app.schemas.analyze import AnalyzeRequest, AnalyzeResponse
 from app.schemas.format import NormalizedFormat
-from app.security.url_validator import validate_and_normalize_url, SecurityError
+from app.security.url_validator import validate_and_normalize_url, validate_and_normalize_url_async, SecurityError
 from app.security.ip import get_client_ip
 from app.security.rate_limiter import rate_limiter
 from app.security.session import get_or_create_session_id
@@ -30,9 +30,9 @@ async def analyze_url(req: AnalyzeRequest, request: Request, response: Response)
 
     session_id = get_or_create_session_id(request, response)
 
-    # 1. URL validation and domain check
+    # 1. URL validation and domain check (non-blocking async)
     try:
-        normalized_url, platform_name = validate_and_normalize_url(req.url)
+        normalized_url, platform_name = await validate_and_normalize_url_async(req.url)
     except SecurityError as e:
         code = getattr(e, "code", "INVALID_URL")
         raise HTTPException(
@@ -122,7 +122,23 @@ async def download_thumbnail(url: str, title: Optional[str] = "thumbnail", is_me
         )
 
     parsed = urlparse(url)
-    allowed_domains = ["ytimg.com", "youtube.com", "instagram.com", "cdninstagram.com", "fbcdn.net"]
+    allowed_domains = [
+        "ytimg.com",
+        "youtube.com",
+        "instagram.com",
+        "cdninstagram.com",
+        "fbcdn.net",
+        "facebook.com",
+        "twimg.com",
+        "x.com",
+        "twitter.com",
+        "pinimg.com",
+        "pinterest.com",
+        "redditmedia.com",
+        "redd.it",
+        "redditstatic.com",
+        "reddit.com",
+    ]
     domain = (parsed.netloc or "").lower()
     if not any(domain == d or domain.endswith("." + d) for d in allowed_domains):
         raise HTTPException(

@@ -373,6 +373,7 @@ class DownloadWorker:
 
             # 5. Download media using YtDlpService into isolated source/ directory
             output_template = str(source_dir / "stream_%(autonumber)02d.%(ext)s")
+            t_work_start = time.perf_counter()
 
             await asyncio.wait_for(
                 ytdlp_service.download_media_async(
@@ -384,6 +385,7 @@ class DownloadWorker:
                 ),
                 timeout=timeout_seconds
             )
+            download_ms = round((time.perf_counter() - t_work_start) * 1000, 1)
 
             if cancel_event.is_set():
                 raise asyncio.CancelledError()
@@ -401,6 +403,7 @@ class DownloadWorker:
             final_output_path = output_dir / f"final.{target_ext}"
 
             # 7. Post-processing with FFmpegService
+            t_ffmpeg_start = time.perf_counter()
             if is_audio_only:
                 input_file = downloaded_files[0]
                 await ffmpeg_service.extract_audio(
@@ -452,21 +455,28 @@ class DownloadWorker:
                     audio_codec=a_codec,
                     job_id=job_id
                 )
+            ffmpeg_ms = round((time.perf_counter() - t_ffmpeg_start) * 1000, 1)
 
             if cancel_event.is_set():
                 raise asyncio.CancelledError()
 
             # 8. Strict FFprobe validation before marking COMPLETED
+            t_val_start = time.perf_counter()
             validation_info = await ffmpeg_service.validate_media_file(
                 file_path=final_output_path,
                 is_audio_only=is_audio_only,
                 expected_container=target_ext
             )
+            val_ms = round((time.perf_counter() - t_val_start) * 1000, 1)
+            total_pipeline_ms = round((time.perf_counter() - t_work_start) * 1000, 1)
+
             log_job(
                 job_id,
                 f"Validation passed: {validation_info.get('video_codec')}/{validation_info.get('audio_codec')} "
-                f"({validation_info.get('width')}x{validation_info.get('height')}, {validation_info.get('duration')}s)"
+                f"({validation_info.get('width')}x{validation_info.get('height')}, {validation_info.get('duration')}s) "
+                f"[timing: download={download_ms}ms, ffmpeg={ffmpeg_ms}ms, val={val_ms}ms, total={total_pipeline_ms}ms]"
             )
+            concurrency_manager.record_stage_timing(download_ms, ffmpeg_ms, val_ms)
 
             file_size = final_output_path.stat().st_size
             if file_size > settings.MAX_OUTPUT_SIZE_BYTES:

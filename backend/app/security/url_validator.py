@@ -1,3 +1,4 @@
+import asyncio
 import ipaddress
 import socket
 from urllib.parse import urlparse
@@ -11,6 +12,24 @@ ALLOWED_DOMAINS: Set[str] = {
     "youtu.be",
     "instagram.com",
     "www.instagram.com",
+    "x.com",
+    "www.x.com",
+    "twitter.com",
+    "www.twitter.com",
+    "mobile.twitter.com",
+    "facebook.com",
+    "www.facebook.com",
+    "m.facebook.com",
+    "web.facebook.com",
+    "fb.watch",
+    "pinterest.com",
+    "www.pinterest.com",
+    "pin.it",
+    "reddit.com",
+    "www.reddit.com",
+    "old.reddit.com",
+    "redd.it",
+    "v.redd.it",
 }
 
 class SecurityError(Exception):
@@ -32,9 +51,22 @@ class SSRFBlockedError(SecurityError):
         super().__init__(message, code="INVALID_URL")
 
 
+NAT64_PREFIX = ipaddress.ip_network("64:ff9b::/96")
+
 def is_private_ip(ip_str: str) -> bool:
     try:
         ip = ipaddress.ip_address(ip_str)
+        # NAT64 well-known prefix (RFC 6052) translates public IPv4 on cellular/modern ISPs
+        if isinstance(ip, ipaddress.IPv6Address) and ip in NAT64_PREFIX:
+            embedded_ipv4 = ipaddress.IPv4Address(ip.packed[-4:])
+            return (
+                embedded_ipv4.is_private
+                or embedded_ipv4.is_loopback
+                or embedded_ipv4.is_link_local
+                or embedded_ipv4.is_multicast
+                or embedded_ipv4.is_reserved
+                or embedded_ipv4.is_unspecified
+            )
         return (
             ip.is_private
             or ip.is_loopback
@@ -92,11 +124,39 @@ def validate_and_normalize_url(raw_url: str) -> Tuple[str, str]:
     ):
         matched_domain = True
         platform = "instagram"
+    elif (
+        hostname_lower in ("x.com", "twitter.com")
+        or hostname_lower.endswith(".x.com")
+        or hostname_lower.endswith(".twitter.com")
+    ):
+        matched_domain = True
+        platform = "x"
+    elif (
+        hostname_lower in ("facebook.com", "fb.watch")
+        or hostname_lower.endswith(".facebook.com")
+        or hostname_lower.endswith(".fb.watch")
+    ):
+        matched_domain = True
+        platform = "facebook"
+    elif (
+        hostname_lower in ("pinterest.com", "pin.it")
+        or hostname_lower.endswith(".pinterest.com")
+        or hostname_lower.endswith(".pin.it")
+    ):
+        matched_domain = True
+        platform = "pinterest"
+    elif (
+        hostname_lower in ("reddit.com", "redd.it")
+        or hostname_lower.endswith(".reddit.com")
+        or hostname_lower.endswith(".redd.it")
+    ):
+        matched_domain = True
+        platform = "reddit"
 
     if not matched_domain or not platform:
         raise UnsupportedDomainError(
             f"The domain '{hostname_lower}' is not supported. "
-            "Supported platforms are currently YouTube and Instagram."
+            "Supported platforms are YouTube, Instagram, X (Twitter), Facebook, Pinterest, and Reddit."
         )
 
     # SSRF Protection: Resolve hostname to IP and ensure it is not private/loopback/cloud-metadata
@@ -112,3 +172,13 @@ def validate_and_normalize_url(raw_url: str) -> Tuple[str, str]:
         raise InvalidURLError(f"Hostname resolution failed: {str(e)}")
 
     return cleaned_url, platform
+
+async def validate_and_normalize_url_async(raw_url: str) -> Tuple[str, str]:
+    """
+    Asynchronous version of validate_and_normalize_url.
+    Offloads blocking socket.getaddrinfo() to the default asyncio threadpool
+    executor to avoid freezing the FastAPI event loop during DNS queries.
+    Preserves all SSRF protections and validation rules.
+    """
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, validate_and_normalize_url, raw_url)

@@ -53,3 +53,17 @@ def test_private_ip_detection():
     assert is_private_ip("169.254.169.254") is True
     assert is_private_ip("::1") is True
     assert is_private_ip("8.8.8.8") is False
+
+@pytest.mark.asyncio
+async def test_validate_and_normalize_url_async():
+    from app.security.url_validator import validate_and_normalize_url_async
+    norm, platform = await validate_and_normalize_url_async("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    assert platform == "youtube"
+    assert norm == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
+    with pytest.raises(UnsupportedDomainError):
+        await validate_and_normalize_url_async("https://unsupported-domain.com/video")
+
+    with pytest.raises(InvalidURLError):
+        await validate_and_normalize_url_async("ftp://youtube.com/watch?v=123")
+

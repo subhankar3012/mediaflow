@@ -22,6 +22,10 @@ const AppRoutes: React.FC = () => {
     '/youtube-to-mp4',
     '/instagram-downloader',
     '/instagram-reels-downloader',
+    '/x-video-downloader',
+    '/facebook-video-downloader',
+    '/pinterest-downloader',
+    '/reddit-video-downloader',
   ];
 
   if (toolPaths.includes(normalizedPath) && SEO_PAGES[normalizedPath]) {

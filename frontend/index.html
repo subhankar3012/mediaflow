@@ -16,36 +16,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="preconnect" href="https://i.ytimg.com" crossorigin />
-    <!-- 20-Second Ad Popunder Cooldown Controller -->
-    <script>
-      (function() {
-        if (typeof window === 'undefined') return;
-        var COOLDOWN_MS = 20000; // 20s cooldown between popunders
-        var lastPopTime = 0;
-        try {
-          lastPopTime = parseInt(sessionStorage.getItem('mf_pop_cooldown') || '0', 10);
-        } catch (e) {}
-
-        var origOpen = window.open;
-        window.open = function(url, target, features) {
-          // Detect popunder or popup window opens
-          var isPopup = !target || target === '_blank' || target === '_new';
-          if (isPopup) {
-            var now = Date.now();
-            if (lastPopTime && (now - lastPopTime < COOLDOWN_MS)) {
-              // Within 20s cooldown: suppress duplicate popunder
-              return null;
-            }
-            // Allow popunder and start 20s cooldown
-            lastPopTime = now;
-            try {
-              sessionStorage.setItem('mf_pop_cooldown', now.toString());
-            } catch (e) {}
-          }
-          return origOpen.apply(window, arguments);
-        };
-      })();
-    </script>
     <!-- Monetag Vignette Banner (Starts after 15s of website load, then recurs every 30s) -->
     <script>
       (function() {
@@ -95,8 +65,8 @@
     <script src="https://pl31478899.profitableratecpmnetwork.com/e6/46/f6/e646f6d5d2dd7ddd81f2a78ddd7989b3.js"></script>
     <!-- Adsterra Social Bar -->
     <script src="https://pl31478897.profitableratecpmnetwork.com/15/85/ea/1585eae8675314ca6c01143c6d125e61.js"></script>
-    <title>MediaFlow — Download YouTube &amp; Instagram Videos Free Without Watermark</title>
-    <meta name="description" content="Download YouTube and Instagram videos in high-definition MP4 or extract crystal-clear MP3 audio for free without watermark. Fast, secure, and mobile-friendly with no registration required." />
+    <title>Free Online Video &amp; Audio Downloader for YouTube &amp; Instagram</title>
+    <meta name="description" content="Download YouTube and Instagram videos in high-definition MP4 or extract clear MP3 audio for free without watermarks. Fast, secure, and mobile-friendly with no registration required." />
   </head>
   <body>
     <div id="root"></div>

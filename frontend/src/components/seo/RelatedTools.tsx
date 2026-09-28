@@ -39,6 +39,30 @@ const TOOLS_LIST: ToolItem[] = [
     category: 'VERTICAL VIDEO',
     description: 'Vertical 9:16 high-definition video with original audio.',
   },
+  {
+    path: '/x-video-downloader',
+    name: 'X / Twitter Video Downloader',
+    category: 'X / TWITTER',
+    description: 'Direct high-speed MP4 extraction from public X posts and threads.',
+  },
+  {
+    path: '/facebook-video-downloader',
+    name: 'Facebook Video Downloader',
+    category: 'FACEBOOK',
+    description: 'Save public Facebook videos and reels in clean 1080p and 720p HD.',
+  },
+  {
+    path: '/pinterest-downloader',
+    name: 'Pinterest Downloader',
+    category: 'PINTEREST',
+    description: 'Download Pinterest video pins and original full-resolution photo pins.',
+  },
+  {
+    path: '/reddit-video-downloader',
+    name: 'Reddit Video Downloader',
+    category: 'REDDIT',
+    description: 'Save Reddit clips with perfectly synchronized native audio and clean MP4.',
+  },
 ];
 
 export interface RelatedToolsProps {

@@ -1,7 +1,7 @@
 import React from 'react';
 
 export interface PlatformThemeProviderProps {
-  platform: 'youtube' | 'instagram' | 'generic' | 'all';
+  platform: 'youtube' | 'instagram' | 'x' | 'facebook' | 'pinterest' | 'reddit' | 'generic' | 'all' | string;
   children: React.ReactNode;
 }
 

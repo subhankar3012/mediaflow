@@ -8,7 +8,7 @@ export interface SpecRow {
 }
 
 export interface TechnicalSpecsTableProps {
-  platform?: 'youtube' | 'instagram' | 'all';
+  platform?: 'youtube' | 'instagram' | 'x' | 'facebook' | 'pinterest' | 'reddit' | 'all' | string;
   title?: string;
   description?: string;
 }

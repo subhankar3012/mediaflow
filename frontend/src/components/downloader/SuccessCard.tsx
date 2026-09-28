@@ -42,13 +42,13 @@ export const SuccessCard: React.FC<SuccessCardProps> = ({
     document.body.removeChild(a);
   };
 
-  // Automatic download initiation: slides to result and starts downloading immediately!
+  // Automatic download initiation: starts downloading immediately upon mount!
   React.useEffect(() => {
     if (downloadUrl && !autoTriggeredRef.current) {
       autoTriggeredRef.current = true;
       const timer = window.setTimeout(() => {
         handleDownload();
-      }, 550);
+      }, 0);
       return () => clearTimeout(timer);
     }
   }, [downloadUrl]);

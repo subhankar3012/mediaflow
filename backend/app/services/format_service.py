@@ -154,11 +154,21 @@ class FormatNormalizer:
         if not raw_formats:
             if platform == "youtube":
                 return self._normalize_youtube([], duration=duration)
+            if platform == "pinterest":
+                return self._normalize_pinterest([], duration=duration)
             return []
 
-        # Platform-specific handling for Instagram
+        # Platform-specific handling
         if platform == "instagram":
             return self._normalize_instagram(raw_formats, duration=duration)
+        elif platform in ("x", "twitter"):
+            return self._normalize_x(raw_formats, duration=duration)
+        elif platform == "facebook":
+            return self._normalize_facebook(raw_formats, duration=duration)
+        elif platform == "pinterest":
+            return self._normalize_pinterest(raw_formats, duration=duration)
+        elif platform == "reddit":
+            return self._normalize_reddit(raw_formats, duration=duration)
 
         return self._normalize_youtube(raw_formats, duration=duration)
 
@@ -228,6 +238,506 @@ class FormatNormalizer:
 
         return [inst_format]
 
+    def _normalize_x(
+        self,
+        raw_formats: List[Dict[str, Any]],
+        duration: Optional[int] = None
+    ) -> List[NormalizedFormat]:
+        """
+        For X (Twitter): Multi-bitrate progressive MP4 streams.
+        Deduplicates by genuine resolution height, sorts descending, and provides MP3 audio option.
+        """
+        resolution_candidates: Dict[int, List[Dict[str, Any]]] = {}
+        all_audio_formats: List[Dict[str, Any]] = []
+
+        for f in raw_formats:
+            vcodec = f.get("vcodec")
+            acodec = f.get("acodec")
+            has_video = bool(vcodec and vcodec.lower() != "none")
+            has_audio = bool(acodec and acodec.lower() != "none")
+
+            if has_audio:
+                all_audio_formats.append(f)
+
+            if has_video and not str(f.get("format_id", "")).startswith("sb"):
+                w = f.get("width")
+                h = f.get("height")
+                eff_h = min(w, h) if (w and h and w < h) else h
+                std_height = self.map_to_standard_height(eff_h)
+                if std_height and std_height > 0:
+                    resolution_candidates.setdefault(std_height, []).append(f)
+
+        best_audio = None
+        if all_audio_formats:
+            all_audio_formats.sort(key=self.rank_audio_format, reverse=True)
+            best_audio = all_audio_formats[0]
+
+        normalized: List[NormalizedFormat] = []
+
+        if not resolution_candidates and raw_formats:
+            valid = [f for f in raw_formats if not str(f.get("format_id", "")).startswith("sb")]
+            chosen = valid[0] if valid else raw_formats[0]
+            h = chosen.get("height") or 720
+            vid_size = self.estimate_stream_size(chosen, duration)
+            normalized.append(
+                NormalizedFormat(
+                    format_id="best",
+                    type="video+audio",
+                    container="mp4",
+                    width=chosen.get("width"),
+                    height=h,
+                    fps=chosen.get("fps"),
+                    vcodec="h264",
+                    acodec="aac",
+                    bitrate=chosen.get("tbr") or chosen.get("vbr"),
+                    has_audio=True,
+                    has_video=True,
+                    filesize=None,
+                    filesize_approx=vid_size,
+                    quality="Best Quality",
+                    format_note="High Definition MP4",
+                    downloadable=True,
+                    source_video_format_id=str(chosen.get("format_id", "best")),
+                    source_audio_format_id=str(best_audio.get("format_id")) if best_audio else None
+                )
+            )
+        else:
+            for h in sorted(resolution_candidates.keys(), reverse=True):
+                candidates = resolution_candidates[h]
+                candidates.sort(key=self.rank_video_format, reverse=True)
+                chosen = candidates[0]
+
+                quality_label = f"{h}p"
+                note = f"{h}p (HD)" if h >= 720 else f"{h}p (SD)"
+                if h >= 1080:
+                    note = f"{h}p (Full HD)"
+                elif h <= 360:
+                    note = f"{h}p (Fast)"
+
+                vid_size = self.estimate_stream_size(chosen, duration)
+                aud_size = self.estimate_stream_size(best_audio, duration) if best_audio else None
+                combined_size = (vid_size + aud_size) if (vid_size is not None and aud_size is not None) else (vid_size or aud_size)
+
+                has_stream_audio = bool(chosen.get("acodec") and chosen.get("acodec").lower() != "none")
+                has_aud = has_stream_audio or (best_audio is not None)
+
+                norm_fmt = NormalizedFormat(
+                    format_id=quality_label,
+                    type="video+audio",
+                    container="mp4",
+                    width=chosen.get("width"),
+                    height=h,
+                    fps=chosen.get("fps"),
+                    vcodec="h264",
+                    acodec="aac",
+                    bitrate=chosen.get("tbr") or chosen.get("vbr"),
+                    has_audio=has_aud,
+                    has_video=True,
+                    filesize=None,
+                    filesize_approx=combined_size,
+                    quality=quality_label,
+                    format_note=note,
+                    downloadable=True,
+                    source_video_format_id=str(chosen.get("format_id")),
+                    source_audio_format_id=str(best_audio.get("format_id")) if best_audio else None
+                )
+                normalized.append(norm_fmt)
+
+        if best_audio:
+            audio_size = self.estimate_stream_size(best_audio, duration)
+            normalized.append(
+                NormalizedFormat(
+                    format_id="audio_best",
+                    type="audio",
+                    container="mp3",
+                    width=None,
+                    height=None,
+                    fps=None,
+                    vcodec=None,
+                    acodec="mp3",
+                    bitrate=best_audio.get("abr") or best_audio.get("tbr") or 192.0,
+                    has_audio=True,
+                    has_video=False,
+                    filesize=None,
+                    filesize_approx=audio_size,
+                    quality="MP3 Audio",
+                    format_note="High Quality MP3 Audio",
+                    downloadable=True,
+                    source_video_format_id=None,
+                    source_audio_format_id=str(best_audio.get("format_id"))
+                )
+            )
+
+        return normalized
+
+    def _normalize_facebook(
+        self,
+        raw_formats: List[Dict[str, Any]],
+        duration: Optional[int] = None
+    ) -> List[NormalizedFormat]:
+        """
+        For Facebook: Public videos and reels.
+        Supports HD / SD or progressive heights + MP3 audio extraction.
+        """
+        resolution_candidates: Dict[int, List[Dict[str, Any]]] = {}
+        all_audio_formats: List[Dict[str, Any]] = []
+
+        for f in raw_formats:
+            vcodec = f.get("vcodec")
+            acodec = f.get("acodec")
+            has_video = bool(vcodec and vcodec.lower() != "none")
+            has_audio = bool(acodec and acodec.lower() != "none")
+
+            if has_audio:
+                all_audio_formats.append(f)
+
+            if has_video and not str(f.get("format_id", "")).startswith("sb"):
+                h = f.get("height")
+                fmt_id = str(f.get("format_id", "")).lower()
+                if not h and "hd" in fmt_id:
+                    h = 1080
+                elif not h and "sd" in fmt_id:
+                    h = 480
+                std_height = self.map_to_standard_height(h) or h
+                if std_height and std_height > 0:
+                    resolution_candidates.setdefault(std_height, []).append(f)
+
+        best_audio = None
+        if all_audio_formats:
+            all_audio_formats.sort(key=self.rank_audio_format, reverse=True)
+            best_audio = all_audio_formats[0]
+
+        normalized: List[NormalizedFormat] = []
+
+        if not resolution_candidates and raw_formats:
+            chosen = raw_formats[0]
+            normalized.append(
+                NormalizedFormat(
+                    format_id="hd",
+                    type="video+audio",
+                    container="mp4",
+                    width=chosen.get("width"),
+                    height=chosen.get("height") or 720,
+                    fps=chosen.get("fps"),
+                    vcodec="h264",
+                    acodec="aac",
+                    bitrate=chosen.get("tbr") or chosen.get("vbr"),
+                    has_audio=True,
+                    has_video=True,
+                    filesize=None,
+                    filesize_approx=self.estimate_stream_size(chosen, duration),
+                    quality="HD Quality",
+                    format_note="High Definition MP4",
+                    downloadable=True,
+                    source_video_format_id=str(chosen.get("format_id", "hd")),
+                    source_audio_format_id=str(best_audio.get("format_id")) if best_audio else None
+                )
+            )
+        else:
+            for h in sorted(resolution_candidates.keys(), reverse=True):
+                candidates = resolution_candidates[h]
+                candidates.sort(key=self.rank_video_format, reverse=True)
+                chosen = candidates[0]
+
+                quality_label = f"{h}p"
+                note = f"{h}p (HD)" if h >= 720 else f"{h}p (SD)"
+                if h >= 1080:
+                    note = f"{h}p (Full HD)"
+
+                vid_size = self.estimate_stream_size(chosen, duration)
+                aud_size = self.estimate_stream_size(best_audio, duration) if best_audio else None
+                combined_size = (vid_size + aud_size) if (vid_size is not None and aud_size is not None) else (vid_size or aud_size)
+
+                normalized.append(
+                    NormalizedFormat(
+                        format_id=quality_label,
+                        type="video+audio",
+                        container="mp4",
+                        width=chosen.get("width"),
+                        height=h,
+                        fps=chosen.get("fps"),
+                        vcodec="h264",
+                        acodec="aac",
+                        bitrate=chosen.get("tbr") or chosen.get("vbr"),
+                        has_audio=True,
+                        has_video=True,
+                        filesize=None,
+                        filesize_approx=combined_size,
+                        quality=quality_label,
+                        format_note=note,
+                        downloadable=True,
+                        source_video_format_id=str(chosen.get("format_id")),
+                        source_audio_format_id=str(best_audio.get("format_id")) if best_audio else None
+                    )
+                )
+
+        if best_audio or any(f.get("acodec") and f.get("acodec") != "none" for f in raw_formats):
+            audio_source = best_audio or raw_formats[0]
+            normalized.append(
+                NormalizedFormat(
+                    format_id="audio_best",
+                    type="audio",
+                    container="mp3",
+                    width=None,
+                    height=None,
+                    fps=None,
+                    vcodec=None,
+                    acodec="mp3",
+                    bitrate=audio_source.get("abr") or 192.0,
+                    has_audio=True,
+                    has_video=False,
+                    filesize=None,
+                    filesize_approx=self.estimate_stream_size(best_audio, duration) if best_audio else None,
+                    quality="MP3 Audio",
+                    format_note="High Quality MP3 Audio",
+                    downloadable=True,
+                    source_video_format_id=None,
+                    source_audio_format_id=str(audio_source.get("format_id"))
+                )
+            )
+
+        return normalized
+
+    def _normalize_pinterest(
+        self,
+        raw_formats: List[Dict[str, Any]],
+        duration: Optional[int] = None
+    ) -> List[NormalizedFormat]:
+        """
+        For Pinterest: Supports both video pins and photo/image pins without crashing.
+        """
+        video_formats = [
+            f for f in raw_formats
+            if f.get("vcodec") and f.get("vcodec").lower() != "none" and not str(f.get("format_id", "")).startswith("sb")
+        ]
+
+        if not video_formats:
+            # Photo / image pin
+            return [
+                NormalizedFormat(
+                    format_id="original_image",
+                    type="image",
+                    container="jpg",
+                    width=None,
+                    height=None,
+                    fps=None,
+                    vcodec=None,
+                    acodec=None,
+                    bitrate=None,
+                    has_audio=False,
+                    has_video=False,
+                    filesize=None,
+                    filesize_approx=None,
+                    quality="Full Resolution",
+                    format_note="Original Full-Resolution Photo",
+                    downloadable=True,
+                    source_video_format_id=None,
+                    source_audio_format_id=None
+                )
+            ]
+
+        resolution_candidates: Dict[int, List[Dict[str, Any]]] = {}
+        all_audio_formats: List[Dict[str, Any]] = []
+
+        for f in raw_formats:
+            acodec = f.get("acodec")
+            if acodec and acodec.lower() != "none":
+                all_audio_formats.append(f)
+
+            if f in video_formats:
+                w = f.get("width")
+                h = f.get("height")
+                eff_h = min(w, h) if (w and h and w < h) else h
+                std_height = self.map_to_standard_height(eff_h) or eff_h
+                if std_height and std_height > 0:
+                    resolution_candidates.setdefault(std_height, []).append(f)
+
+        best_audio = None
+        if all_audio_formats:
+            all_audio_formats.sort(key=self.rank_audio_format, reverse=True)
+            best_audio = all_audio_formats[0]
+
+        normalized: List[NormalizedFormat] = []
+        for h in sorted(resolution_candidates.keys(), reverse=True):
+            candidates = resolution_candidates[h]
+            candidates.sort(key=self.rank_video_format, reverse=True)
+            chosen = candidates[0]
+
+            quality_label = f"{h}p"
+            note = f"{h}p (HD)" if h >= 720 else f"{h}p (SD)"
+            normalized.append(
+                NormalizedFormat(
+                    format_id=quality_label,
+                    type="video+audio",
+                    container="mp4",
+                    width=chosen.get("width"),
+                    height=h,
+                    fps=chosen.get("fps"),
+                    vcodec="h264",
+                    acodec="aac",
+                    bitrate=chosen.get("tbr") or chosen.get("vbr"),
+                    has_audio=True,
+                    has_video=True,
+                    filesize=None,
+                    filesize_approx=self.estimate_stream_size(chosen, duration),
+                    quality=quality_label,
+                    format_note=note,
+                    downloadable=True,
+                    source_video_format_id=str(chosen.get("format_id")),
+                    source_audio_format_id=str(best_audio.get("format_id")) if best_audio else None
+                )
+            )
+
+        if best_audio:
+            normalized.append(
+                NormalizedFormat(
+                    format_id="audio_best",
+                    type="audio",
+                    container="mp3",
+                    width=None,
+                    height=None,
+                    fps=None,
+                    vcodec=None,
+                    acodec="mp3",
+                    bitrate=best_audio.get("abr") or 192.0,
+                    has_audio=True,
+                    has_video=False,
+                    filesize=None,
+                    filesize_approx=self.estimate_stream_size(best_audio, duration),
+                    quality="MP3 Audio",
+                    format_note="High Quality MP3 Audio",
+                    downloadable=True,
+                    source_video_format_id=None,
+                    source_audio_format_id=str(best_audio.get("format_id"))
+                )
+            )
+
+        return normalized
+
+    def _normalize_reddit(
+        self,
+        raw_formats: List[Dict[str, Any]],
+        duration: Optional[int] = None
+    ) -> List[NormalizedFormat]:
+        """
+        For Reddit: DASH streams where video and audio are separate (v.redd.it).
+        Guarantees audio presence by linking best audio stream for FFmpeg merging.
+        """
+        resolution_candidates: Dict[int, List[Dict[str, Any]]] = {}
+        all_audio_formats: List[Dict[str, Any]] = []
+
+        for f in raw_formats:
+            vcodec = f.get("vcodec")
+            acodec = f.get("acodec")
+            has_video = bool(vcodec and vcodec.lower() != "none")
+            has_audio = bool(acodec and acodec.lower() != "none")
+
+            if has_audio:
+                all_audio_formats.append(f)
+
+            if has_video and not str(f.get("format_id", "")).startswith("sb"):
+                w = f.get("width")
+                h = f.get("height")
+                eff_h = min(w, h) if (w and h and w < h) else h
+                std_height = self.map_to_standard_height(eff_h) or eff_h
+                if std_height and std_height > 0:
+                    resolution_candidates.setdefault(std_height, []).append(f)
+
+        best_audio = None
+        if all_audio_formats:
+            all_audio_formats.sort(key=self.rank_audio_format, reverse=True)
+            best_audio = all_audio_formats[0]
+
+        normalized: List[NormalizedFormat] = []
+
+        if not resolution_candidates and raw_formats:
+            chosen = raw_formats[0]
+            normalized.append(
+                NormalizedFormat(
+                    format_id="best",
+                    type="video+audio",
+                    container="mp4",
+                    width=chosen.get("width"),
+                    height=chosen.get("height") or 720,
+                    fps=chosen.get("fps"),
+                    vcodec="h264",
+                    acodec="aac",
+                    bitrate=chosen.get("tbr") or chosen.get("vbr"),
+                    has_audio=bool(best_audio or (chosen.get("acodec") and chosen.get("acodec") != "none")),
+                    has_video=True,
+                    filesize=None,
+                    filesize_approx=self.estimate_stream_size(chosen, duration),
+                    quality="Best Quality",
+                    format_note="High Definition MP4 with Audio",
+                    downloadable=True,
+                    source_video_format_id=str(chosen.get("format_id", "best")),
+                    source_audio_format_id=str(best_audio.get("format_id")) if best_audio else None
+                )
+            )
+        else:
+            for h in sorted(resolution_candidates.keys(), reverse=True):
+                candidates = resolution_candidates[h]
+                candidates.sort(key=self.rank_video_format, reverse=True)
+                chosen = candidates[0]
+
+                quality_label = f"{h}p"
+                note = f"{h}p (HD)" if h >= 720 else f"{h}p (SD)"
+                if h >= 1080:
+                    note = f"{h}p (Full HD)"
+
+                vid_size = self.estimate_stream_size(chosen, duration)
+                aud_size = self.estimate_stream_size(best_audio, duration) if best_audio else None
+                combined_size = (vid_size + aud_size) if (vid_size is not None and aud_size is not None) else (vid_size or aud_size)
+
+                normalized.append(
+                    NormalizedFormat(
+                        format_id=quality_label,
+                        type="video+audio",
+                        container="mp4",
+                        width=chosen.get("width"),
+                        height=h,
+                        fps=chosen.get("fps"),
+                        vcodec="h264",
+                        acodec="aac",
+                        bitrate=chosen.get("tbr") or chosen.get("vbr"),
+                        has_audio=bool(best_audio or (chosen.get("acodec") and chosen.get("acodec") != "none")),
+                        has_video=True,
+                        filesize=None,
+                        filesize_approx=combined_size,
+                        quality=quality_label,
+                        format_note=note,
+                        downloadable=True,
+                        source_video_format_id=str(chosen.get("format_id")),
+                        source_audio_format_id=str(best_audio.get("format_id")) if best_audio else None
+                    )
+                )
+
+        if best_audio:
+            normalized.append(
+                NormalizedFormat(
+                    format_id="audio_best",
+                    type="audio",
+                    container="mp3",
+                    width=None,
+                    height=None,
+                    fps=None,
+                    vcodec=None,
+                    acodec="mp3",
+                    bitrate=best_audio.get("abr") or best_audio.get("tbr") or 192.0,
+                    has_audio=True,
+                    has_video=False,
+                    filesize=None,
+                    filesize_approx=self.estimate_stream_size(best_audio, duration),
+                    quality="MP3 Audio",
+                    format_note="High Fidelity MP3 Audio",
+                    downloadable=True,
+                    source_video_format_id=None,
+                    source_audio_format_id=str(best_audio.get("format_id"))
+                )
+            )
+
+        return normalized
+
     def _normalize_youtube(
         self,
         raw_formats: List[Dict[str, Any]],
@@ -237,14 +747,16 @@ class FormatNormalizer:
         For YouTube: Group by genuine resolution height, pick the best compatible stream
         for each height, and guarantee all standard consumer tiers.
         """
-        # Determine maximum available height from video formats
+        # Determine maximum available height from video formats (aspect-ratio aware)
         max_source_height = 0
         for f in raw_formats:
             vcodec = f.get("vcodec")
-            if vcodec and vcodec.lower() != "none":
+            if vcodec and vcodec.lower() != "none" and not str(f.get("format_id", "")).startswith("sb"):
+                w = f.get("width")
                 h = f.get("height") or 0
-                if h > max_source_height:
-                    max_source_height = h
+                eff_h = min(w, h) if (w and h and w < h) else h
+                if eff_h and eff_h > max_source_height:
+                    max_source_height = eff_h
 
         # If source has standard tiers (>= 360p) or empty, only expose standard consumer tiers
         # If source max resolution is lower (e.g. vintage 240p/144p), expose lower tiers
@@ -266,9 +778,11 @@ class FormatNormalizer:
             if has_audio:
                 all_audio_formats.append(f)
 
-            if has_video:
-                raw_height = f.get("height")
-                std_height = self.map_to_standard_height(raw_height)
+            if has_video and not str(f.get("format_id", "")).startswith("sb"):
+                w = f.get("width")
+                h = f.get("height")
+                eff_h = min(w, h) if (w and h and w < h) else h
+                std_height = self.map_to_standard_height(eff_h)
                 if std_height and std_height in allowed_heights:
                     resolution_candidates.setdefault(std_height, []).append(f)
 
@@ -287,7 +801,12 @@ class FormatNormalizer:
                     max_h = max(resolution_candidates.keys())
                     resolution_candidates[tier] = list(resolution_candidates[max_h])
                 elif raw_formats:
-                    resolution_candidates[tier] = [raw_formats[0]]
+                    # Filter out storyboard images (sb0, sb1, sb2) and audio-only formats
+                    valid_fallback = [
+                        rf for rf in raw_formats
+                        if rf.get("vcodec") and rf.get("vcodec").lower() != "none" and not str(rf.get("format_id", "")).startswith("sb")
+                    ]
+                    resolution_candidates[tier] = [valid_fallback[0]] if valid_fallback else [raw_formats[0]]
                 else:
                     resolution_candidates[tier] = [{
                         "format_id": f"{tier}p",

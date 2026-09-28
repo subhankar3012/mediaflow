@@ -41,10 +41,6 @@ export const AdsterraBanner: React.FC<AdsterraBannerProps> = memo(({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  if (!appConfig.enableAds) {
-    return null;
-  }
-
   // Determine key, dimensions, and type based on slotType & device
   let key = '';
   let width = 300;
@@ -157,6 +153,7 @@ export const AdsterraBanner: React.FC<AdsterraBannerProps> = memo(({
 
   // Safely inject into iframe via doc.write to inherit real domain origin without about:srcdoc blanking
   useEffect(() => {
+    if (!appConfig.enableAds) return;
     const iframe = iframeRef.current;
     if (!iframe) return;
 
@@ -183,6 +180,10 @@ export const AdsterraBanner: React.FC<AdsterraBannerProps> = memo(({
       iframe.onload = writeDoc;
     }
   }, [iframeHtml, key, width, height, isNative]);
+
+  if (!appConfig.enableAds) {
+    return null;
+  }
 
   const frameWidth = isNative ? '100%' : width;
   const frameHeight = isNative ? 180 : height;

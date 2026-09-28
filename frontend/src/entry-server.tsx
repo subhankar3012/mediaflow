@@ -19,7 +19,7 @@ export function render(url: string) {
       description: page.metaDescription,
       canonicalPath: page.path,
       breadcrumbs: page.breadcrumbs,
-      isToolPage: url === '/' || url.startsWith('/youtube-') || url.startsWith('/instagram-'),
+      isToolPage: url === '/' || url.startsWith('/youtube-') || url.startsWith('/instagram-') || url.startsWith('/x-') || url.startsWith('/facebook-') || url.startsWith('/pinterest-') || url.startsWith('/reddit-'),
     });
   } else if (url === '/404') {
     headTags = `

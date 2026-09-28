@@ -53,7 +53,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
-    allow_origin_regex=r"https?://.*(\.vercel\.app|\.pages\.dev|\.workers\.dev|strengerchat\.in)",
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$|^https://([a-zA-Z0-9-]+\.)*strengerchat\.in$|^https://[a-zA-Z0-9-]+(\.vercel\.app|\.pages\.dev)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

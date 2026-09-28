@@ -46,3 +46,15 @@ scratch/
 .temp/
 supabase/.temp/
 
+# Cookies & Credentials
+*cookies*.txt
+credentials*.json
+
+# Mobile Builds & Packages (Preserve on disk, exclude from web repo)
+*.apk
+*.aab
+mobile/
+
+# Vite Cache
+.vite/
+

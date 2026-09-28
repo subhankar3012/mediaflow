@@ -139,6 +139,38 @@
   --platform-accent-glow: rgba(225, 48, 108, 0.08);
 }
 
+[data-platform="x"] {
+  --platform-accent: #0f1419;
+  --platform-accent-hover: #272c30;
+  --platform-accent-subtle: #f7f9f9;
+  --platform-accent-text: #0f1419;
+  --platform-accent-glow: rgba(15, 20, 25, 0.06);
+}
+
+[data-platform="facebook"] {
+  --platform-accent: #1877f2;
+  --platform-accent-hover: #166fe5;
+  --platform-accent-subtle: #f0f7ff;
+  --platform-accent-text: #1877f2;
+  --platform-accent-glow: rgba(24, 119, 242, 0.08);
+}
+
+[data-platform="pinterest"] {
+  --platform-accent: #e60023;
+  --platform-accent-hover: #cc001f;
+  --platform-accent-subtle: #fef0f2;
+  --platform-accent-text: #e60023;
+  --platform-accent-glow: rgba(230, 0, 35, 0.08);
+}
+
+[data-platform="reddit"] {
+  --platform-accent: #ff4500;
+  --platform-accent-hover: #e03d00;
+  --platform-accent-subtle: #fff2ed;
+  --platform-accent-text: #ff4500;
+  --platform-accent-glow: rgba(255, 69, 0, 0.08);
+}
+
 [data-platform="generic"],
 [data-platform="all"] {
   --platform-accent: #0f172a;

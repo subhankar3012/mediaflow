@@ -26,6 +26,9 @@ class AdaptiveConcurrencyManager:
         self._total_failed: int = 0
         self._job_start_times: Dict[str, float] = {}
         self._recent_durations: list = []
+        self._recent_download_ms: list = []
+        self._recent_ffmpeg_ms: list = []
+        self._recent_validation_ms: list = []
         self._lock = Lock()
 
     def evaluate_admission(
@@ -164,6 +167,19 @@ class AdaptiveConcurrencyManager:
                 if c.resource_class in (JobResourceClass.HEAVY, JobResourceClass.VERY_HEAVY)
             )
 
+    def record_stage_timing(self, download_ms: float, ffmpeg_ms: float, validation_ms: float) -> None:
+        """Records internal stage timings for pipeline observability without leaking sensitive details."""
+        with self._lock:
+            self._recent_download_ms.append(download_ms)
+            self._recent_ffmpeg_ms.append(ffmpeg_ms)
+            self._recent_validation_ms.append(validation_ms)
+            if len(self._recent_download_ms) > 100:
+                self._recent_download_ms.pop(0)
+            if len(self._recent_ffmpeg_ms) > 100:
+                self._recent_ffmpeg_ms.pop(0)
+            if len(self._recent_validation_ms) > 100:
+                self._recent_validation_ms.pop(0)
+
     def get_metrics(self) -> Dict[str, Any]:
         """Provides real-time telemetry for administrative observability."""
         with self._lock:
@@ -183,6 +199,19 @@ class AdaptiveConcurrencyManager:
             avg_duration = (
                 sum(self._recent_durations) / len(self._recent_durations)
                 if self._recent_durations else 0.0
+            )
+
+            avg_download = (
+                sum(self._recent_download_ms) / len(self._recent_download_ms)
+                if self._recent_download_ms else 0.0
+            )
+            avg_ffmpeg = (
+                sum(self._recent_ffmpeg_ms) / len(self._recent_ffmpeg_ms)
+                if self._recent_ffmpeg_ms else 0.0
+            )
+            avg_validation = (
+                sum(self._recent_validation_ms) / len(self._recent_validation_ms)
+                if self._recent_validation_ms else 0.0
             )
 
             return {
@@ -207,7 +236,13 @@ class AdaptiveConcurrencyManager:
                     "total_completed": self._total_completed,
                     "total_failed": self._total_failed,
                     "average_duration_seconds": round(avg_duration, 2),
+                },
+                "pipeline_timing_ms": {
+                    "average_download_ms": round(avg_download, 1),
+                    "average_ffmpeg_ms": round(avg_ffmpeg, 1),
+                    "average_validation_ms": round(avg_validation, 1),
                 }
             }
 
 concurrency_manager = AdaptiveConcurrencyManager()
+

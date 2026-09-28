@@ -114,3 +114,31 @@ def test_rate_limiter_eviction():
     assert evicted == 2
     assert "stale_ip_1" not in limiter._requests
     assert "stale_ip_2" not in limiter._requests
+
+
+def test_cors_origin_validation():
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    client = TestClient(app)
+
+    # 1. Allowed production origin
+    res_prod = client.options(
+        "/api/health",
+        headers={
+            "Origin": "https://download.strengerchat.in",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert res_prod.headers.get("access-control-allow-origin") == "https://download.strengerchat.in"
+
+    # 2. Disallowed spoofed origin
+    res_bad = client.options(
+        "/api/health",
+        headers={
+            "Origin": "https://evil-strengerchat.in",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert "access-control-allow-origin" not in res_bad.headers
+

@@ -25,7 +25,7 @@ export const Footer: React.FC = () => {
               </span>
             </Link>
             <p>
-              An understated, lightning-fast utility for YouTube and Instagram. Clean direct media extraction with zero loss.
+              An understated, lightning-fast utility for YouTube, Instagram, X, Facebook, Pinterest, and Reddit. Clean direct media extraction with zero loss.
             </p>
           </div>
 
@@ -45,15 +45,27 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Instagram Tools */}
+          {/* Social & Media Tools */}
           <div className="footer-col">
-            <h4>Instagram Tools</h4>
+            <h4>Social &amp; Media</h4>
             <ul>
               <li>
                 <Link to="/instagram-downloader">Instagram Video Downloader</Link>
               </li>
               <li>
                 <Link to="/instagram-reels-downloader">Instagram Reels Downloader</Link>
+              </li>
+              <li>
+                <Link to="/x-video-downloader">X / Twitter Video Downloader</Link>
+              </li>
+              <li>
+                <Link to="/facebook-video-downloader">Facebook Video Downloader</Link>
+              </li>
+              <li>
+                <Link to="/pinterest-downloader">Pinterest Downloader</Link>
+              </li>
+              <li>
+                <Link to="/reddit-video-downloader">Reddit Video Downloader</Link>
               </li>
             </ul>
           </div>

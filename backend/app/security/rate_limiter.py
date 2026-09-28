@@ -62,14 +62,20 @@ class RateLimiter:
             self._requests[client_key] = valid_timestamps
 
     def acquire_job_slot(self, session_id: str) -> None:
-        """Validates concurrency limits before starting a new download job."""
+        """
+        Validates concurrency limits at HTTP admission level before enqueueing.
+        Enforces per-session limits and overall system capacity buffer,
+        allowing the queue to absorb up to MAX_QUEUE_DEPTH while worker
+        concurrency_manager dynamically admits active jobs based on hardware.
+        """
         with self._lock:
-            if self._total_active_jobs >= settings.MAX_CONCURRENT_JOBS_GLOBAL:
+            max_system_capacity = settings.MAX_ACTIVE_JOBS_HARD_LIMIT + settings.MAX_QUEUE_DEPTH
+            if self._total_active_jobs >= max_system_capacity:
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail={
                         "error_code": "CONCURRENCY_LIMIT_EXCEEDED",
-                        "message": "Global job capacity reached. Please retry in a few moments."
+                        "message": "Global system capacity reached. Please retry in a few moments."
                     }
                 )
 

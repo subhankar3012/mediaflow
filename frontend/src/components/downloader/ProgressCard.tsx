@@ -125,7 +125,14 @@ export const ProgressCard: React.FC<ProgressCardProps> = ({
       </div>
 
       {/* Progress Track */}
-      <div className="progress-track" aria-hidden="true">
+      <div
+        className="progress-track"
+        role="progressbar"
+        aria-valuenow={isIndeterminate ? undefined : Math.round(pct)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Download progress"
+      >
         {isIndeterminate ? (
           <div className="progress-fill indeterminate" />
         ) : (

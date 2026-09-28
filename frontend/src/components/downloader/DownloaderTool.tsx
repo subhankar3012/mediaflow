@@ -14,6 +14,7 @@ import { SkeletonCard } from './SkeletonCard';
 import { ErrorAlert } from './ErrorAlert';
 import { InterstitialModal } from '../ads/InterstitialModal';
 import { AdSlot } from '../ads/AdSlot';
+import { SupportedPlatformsList } from './SupportedPlatformsList';
 
 export interface DownloaderToolProps {
   defaultOutputType?: OutputType;
@@ -122,6 +123,7 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
     return () => {
       if (unsubscribeRef.current) unsubscribeRef.current();
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      if (sseTimeoutRef.current) clearTimeout(sseTimeoutRef.current);
     };
   }, []);
 
@@ -192,9 +194,25 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
     }
   };
 
-  // 3. Fallback Polling if SSE Fails
+  const sseTimeoutRef = useRef<number | null>(null);
+
+  const stopPolling = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  };
+
+  const clearSseTimeout = () => {
+    if (sseTimeoutRef.current) {
+      clearTimeout(sseTimeoutRef.current);
+      sseTimeoutRef.current = null;
+    }
+  };
+
+  // 3. Fallback Polling strictly activated only if SSE fails or times out
   const startFallbackPolling = (jobId: string) => {
-    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    if (pollIntervalRef.current) return;
 
     pollIntervalRef.current = window.setInterval(async () => {
       try {
@@ -214,10 +232,12 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
         });
 
         if (currentJob.status === 'COMPLETED') {
-          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+          stopPolling();
+          clearSseTimeout();
           setStep('completed');
         } else if (['FAILED', 'CANCELLED', 'EXPIRED'].includes(currentJob.status)) {
-          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+          stopPolling();
+          clearSseTimeout();
           setError(formatError(currentJob.error_code || currentJob.error_message, 'Download processing failed.'));
           setStep('error');
         }
@@ -225,6 +245,54 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
         // keep polling until timeout
       }
     }, 1500);
+  };
+
+  // Centralized job tracking: SSE is primary; polling only activates on SSE failure
+  const trackDownloadJob = (jobId: string) => {
+    stopPolling();
+    clearSseTimeout();
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+
+    let hasReceivedSseEvent = false;
+
+    // Timeout: if SSE does not deliver an event within 5s, start fallback polling
+    sseTimeoutRef.current = window.setTimeout(() => {
+      if (!hasReceivedSseEvent) {
+        startFallbackPolling(jobId);
+      }
+    }, 5000);
+
+    const unsubscribe = subscribeToJobEvents({
+      jobId,
+      onEvent: (data) => {
+        hasReceivedSseEvent = true;
+        clearSseTimeout();
+        stopPolling();
+        setProgressData(data);
+      },
+      onComplete: () => {
+        clearSseTimeout();
+        stopPolling();
+        setStep('completed');
+      },
+      onTerminal: (terminalStatus, data) => {
+        clearSseTimeout();
+        stopPolling();
+        if (terminalStatus === 'FAILED' || terminalStatus === 'EXPIRED') {
+          setError(formatError(data.error_code || data.error_message, 'Download processing failed.'));
+          setStep('error');
+        }
+      },
+      onError: () => {
+        clearSseTimeout();
+        startFallbackPolling(jobId);
+      },
+    });
+
+    unsubscribeRef.current = unsubscribe;
   };
 
   // 4. Download Trigger Execution
@@ -273,32 +341,7 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
         progress: 0,
       });
 
-      // Start polling immediately alongside SSE to eliminate waiting lag
-      startFallbackPolling(res.job_id);
-
-      // Subscribe to realtime SSE events
-      const unsubscribe = subscribeToJobEvents({
-        jobId: res.job_id,
-        onEvent: (data) => {
-          setProgressData(data);
-        },
-        onComplete: () => {
-          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-          setStep('completed');
-        },
-        onTerminal: (terminalStatus, data) => {
-          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-          if (terminalStatus === 'FAILED' || terminalStatus === 'EXPIRED') {
-            setError(formatError(data.error_code || data.error_message, 'Download processing failed.'));
-            setStep('error');
-          }
-        },
-        onError: () => {
-          startFallbackPolling(res.job_id);
-        },
-      });
-
-      unsubscribeRef.current = unsubscribe;
+      trackDownloadJob(res.job_id);
     } catch (err: any) {
       setError(formatError(err, 'Could not initiate download job.'));
       setStep('error');
@@ -338,35 +381,13 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
         progress: 0,
       });
 
-      startFallbackPolling(res.job_id);
-
-      const unsubscribe = subscribeToJobEvents({
-        jobId: res.job_id,
-        onEvent: (data) => {
-          setProgressData(data);
-        },
-        onComplete: () => {
-          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-          setStep('completed');
-        },
-        onTerminal: (terminalStatus, data) => {
-          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-          if (terminalStatus === 'FAILED' || terminalStatus === 'EXPIRED') {
-            setError(formatError(data.error_code || data.error_message, 'Download processing failed.'));
-            setStep('error');
-          }
-        },
-        onError: () => {
-          startFallbackPolling(res.job_id);
-        },
-      });
-
-      unsubscribeRef.current = unsubscribe;
+      trackDownloadJob(res.job_id);
     } catch (err: any) {
       setError(formatError(err, 'Could not initiate ZIP download.'));
       setStep('error');
     }
   };
+
 
   // 5. User Click on Main Download CTA Button - Starts background extraction & shows 5s ad popup
   const handleDownloadClick = () => {
@@ -400,8 +421,7 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
   const isYouTube = analysis?.platform === 'youtube';
 
   const getDownloadButtonLabel = () => {
-    if (analysis?.media_type === 'image' && !isYouTube) return 'Download HD Photo';
-    if (isInstagram && !isYouTube) return 'Download Video';
+    if (analysis?.media_type === 'image') return 'Download Image';
     if (outputType === 'mp3') return 'Download MP3';
     if (outputType === 'thumbnail') return 'Download Thumbnail';
     // Show friendly label like "Download 1080p Video" instead of raw format ID
@@ -427,6 +447,11 @@ export const DownloaderTool: React.FC<DownloaderToolProps> = ({
           error={step === 'error' && !analysis ? error?.message : null}
         />
       </div>
+
+      {/* Supported Platforms Chips */}
+      {step !== 'downloading' && !analysis && (
+        <SupportedPlatformsList />
+      )}
 
       {/* Global Error Alert */}
       {error && (

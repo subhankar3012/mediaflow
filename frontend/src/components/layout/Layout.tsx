@@ -12,9 +12,13 @@ export interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { currentPath } = useRouter();
 
-  const getPlatform = (path: string): 'youtube' | 'instagram' | 'generic' => {
+  const getPlatform = (path: string): 'youtube' | 'instagram' | 'x' | 'facebook' | 'pinterest' | 'reddit' | 'generic' => {
     if (path.includes('youtube')) return 'youtube';
     if (path.includes('instagram')) return 'instagram';
+    if (path.includes('x-')) return 'x';
+    if (path.includes('facebook')) return 'facebook';
+    if (path.includes('pinterest')) return 'pinterest';
+    if (path.includes('reddit')) return 'reddit';
     return 'generic';
   };
 

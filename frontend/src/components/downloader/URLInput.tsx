@@ -15,7 +15,7 @@ export const URLInput: React.FC<URLInputProps> = ({
   onChange,
   onSubmit,
   loading,
-  placeholder = 'Paste YouTube or Instagram link here...',
+  placeholder = 'Paste video, music, or post link here...',
   error,
 }) => {
   const [localError, setLocalError] = useState<string | null>(null);

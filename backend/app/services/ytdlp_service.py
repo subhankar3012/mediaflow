@@ -374,7 +374,7 @@ class YtDlpService:
             if use_cookies:
                 opts["extractor_args"] = {
                     "youtube": {
-                        "player_client": ["web_embedded", "tv_downgraded", "web"]
+                        "player_client": ["visionos", "web_embedded", "web"]
                     }
                 }
             else:
@@ -666,7 +666,7 @@ class YtDlpService:
             if use_cookies:
                 opts["extractor_args"] = {
                     "youtube": {
-                        "player_client": ["web_embedded", "tv_downgraded", "web"]
+                        "player_client": ["visionos", "web_embedded", "web"]
                     }
                 }
             else:
