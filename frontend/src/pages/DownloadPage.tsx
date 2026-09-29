@@ -4,7 +4,7 @@ import { HeadMeta } from '../components/seo/HeadMeta';
 export const DownloadPage: React.FC = () => {
   const [downloadStarted, setDownloadStarted] = useState(false);
   const apkUrl = '/download/apk';
-  const version = '1.5.8';
+  const version = '1.5.9';
 
   useEffect(() => {
     // Automatically trigger APK download after 1.5 seconds on mobile
@@ -26,7 +26,7 @@ export const DownloadPage: React.FC = () => {
   return (
     <>
       <HeadMeta
-        title="Download MediaFlow for Android (Official APK • v1.5.8)"
+        title="Download MediaFlow for Android (Official APK • v1.5.9)"
         description="Download MediaFlow Android App for high-speed 4K/1080p video and photo downloads from YouTube, Instagram, X/Twitter, and Reddit."
         canonicalPath="/download"
       />

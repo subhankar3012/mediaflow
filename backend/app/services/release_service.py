@@ -126,8 +126,8 @@ class ReleaseService:
     def _get_default_release(self) -> Dict[str, Any]:
         """Baseline fallback when remote sources are unavailable."""
         return {
-            "latest_version": "1.5.8",
-            "version_code": 23,
+            "latest_version": "1.5.9",
+            "version_code": 24,
             "apk_url": "https://github.com/subhankar3012/mediaflow/releases/latest/download/MediaFlow-release.apk",
             "release_notes": (
                 "• In-app update system with native FileProvider installer\n"
@@ -156,8 +156,8 @@ class ReleaseService:
             payload = {
                 "device_id": str(device_id),
                 "fcm_token": device_data.get("fcm_token"),
-                "app_version": str(device_data.get("app_version", "1.5.8")),
-                "version_code": int(device_data.get("version_code", 23)),
+                "app_version": str(device_data.get("app_version", "1.5.9")),
+                "version_code": int(device_data.get("version_code", 24)),
                 "platform": str(device_data.get("platform", "android")),
                 "android_version": device_data.get("android_version"),
                 "notification_enabled": bool(device_data.get("notification_enabled", True)),

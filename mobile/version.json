@@ -1,6 +1,6 @@
 {
-  "latest_version": "1.5.8",
-  "version_code": 23,
+  "latest_version": "1.5.9",
+  "version_code": 24,
   "apk_url": "https://github.com/subhankar3012/mediaflow/releases/latest/download/MediaFlow-release.apk",
   "release_notes": "• In-app update system with native FileProvider installer\n• High-priority Android update notifications\n• Dynamic OS-level version detection\n• Enhanced 4K/1080p and social downloads",
   "is_mandatory": false,
