@@ -5,6 +5,7 @@ import { ToolPage } from './pages/ToolPage';
 import { SimpleContentPage } from './pages/SimpleContentPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { SEO_PAGES } from './config/seoContent';
+import { DownloadPage } from './pages/DownloadPage';
 
 const AppRoutes: React.FC = () => {
   const { currentPath } = useRouter();
@@ -43,6 +44,11 @@ const AppRoutes: React.FC = () => {
 
   if (contentPaths.includes(normalizedPath) && SEO_PAGES[normalizedPath]) {
     return <SimpleContentPage page={SEO_PAGES[normalizedPath]} />;
+  }
+
+  // Dedicated Mobile App Download Landing Page
+  if (normalizedPath === '/download') {
+    return <DownloadPage />;
   }
 
   // 404 Fallback

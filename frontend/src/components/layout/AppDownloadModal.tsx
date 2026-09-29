@@ -6,6 +6,27 @@ export interface AppDownloadModalProps {
 }
 
 export const AppDownloadModal: React.FC<AppDownloadModalProps> = ({ isOpen, onClose }) => {
+  const [version, setVersion] = React.useState<string>('1.5.7');
+  const [downloadUrl, setDownloadUrl] = React.useState<string>('/download/apk');
+
+  useEffect(() => {
+    // Fetch latest version metadata silently
+    fetch('/api/app/version')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.latest_version) {
+          setVersion(data.latest_version);
+        }
+        if (data?.apk_url) {
+          setDownloadUrl(data.apk_url);
+        }
+      })
+      .catch(() => {
+        // Fallback to latest direct GitHub release link
+        setDownloadUrl('https://github.com/subhankar3012/mediaflow/releases/latest/download/MediaFlow-release.apk');
+      });
+  }, []);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -111,9 +132,8 @@ export const AppDownloadModal: React.FC<AppDownloadModalProps> = ({ isOpen, onCl
         <div className="app-modal-action-box">
           <div className="app-modal-download-col">
             <a
-              href="https://github.com/subhankar3012/mediaflow/releases/latest"
-              target="_blank"
-              rel="noopener noreferrer"
+              href={downloadUrl}
+              download="MediaFlow-release.apk"
               className="btn-primary app-download-direct-btn"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -121,50 +141,30 @@ export const AppDownloadModal: React.FC<AppDownloadModalProps> = ({ isOpen, onCl
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              <span>Download APK (Free • v1.0.0)</span>
+              <span>Download APK (Free • v{version})</span>
             </a>
             <span className="app-download-meta">
-              Android 8.0+ • ~22 MB • Safe SHA-256 Verified
+              Android 8.0+ (Android 15 &amp; 16 Ready) • ~115 MB • 100% On-Device
             </span>
           </div>
 
           <div className="app-modal-qr-col">
-            <div className="app-qr-box" title="Scan with your phone to download">
-              <svg viewBox="0 0 100 100" width="80" height="80" className="app-qr-svg">
-                {/* Visual stylised QR Code pattern */}
-                <rect width="100" height="100" fill="#ffffff" rx="8" />
-                {/* Corner Top-Left */}
-                <rect x="8" y="8" width="28" height="28" fill="#0f172a" rx="4" />
-                <rect x="14" y="14" width="16" height="16" fill="#ffffff" rx="2" />
-                <rect x="18" y="18" width="8" height="8" fill="#e11d48" rx="1" />
-                {/* Corner Top-Right */}
-                <rect x="64" y="8" width="28" height="28" fill="#0f172a" rx="4" />
-                <rect x="70" y="14" width="16" height="16" fill="#ffffff" rx="2" />
-                <rect x="74" y="18" width="8" height="8" fill="#e11d48" rx="1" />
-                {/* Corner Bottom-Left */}
-                <rect x="8" y="64" width="28" height="28" fill="#0f172a" rx="4" />
-                <rect x="14" y="70" width="16" height="16" fill="#ffffff" rx="2" />
-                <rect x="18" y="74" width="8" height="8" fill="#e11d48" rx="1" />
-                {/* Inner Data Cells */}
-                <rect x="42" y="12" width="6" height="6" fill="#0f172a" />
-                <rect x="52" y="16" width="6" height="6" fill="#0f172a" />
-                <rect x="44" y="24" width="6" height="6" fill="#0f172a" />
-                <rect x="12" y="44" width="6" height="6" fill="#0f172a" />
-                <rect x="22" y="48" width="6" height="6" fill="#0f172a" />
-                <rect x="32" y="42" width="6" height="6" fill="#0f172a" />
-                <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="2" />
-                <rect x="46" y="46" width="8" height="8" fill="#38bdf8" rx="1" />
-                <rect x="64" y="44" width="6" height="6" fill="#0f172a" />
-                <rect x="74" y="48" width="6" height="6" fill="#0f172a" />
-                <rect x="84" y="42" width="6" height="6" fill="#0f172a" />
-                <rect x="44" y="66" width="6" height="6" fill="#0f172a" />
-                <rect x="54" y="74" width="6" height="6" fill="#0f172a" />
-                <rect x="44" y="82" width="6" height="6" fill="#0f172a" />
-                <rect x="66" y="66" width="6" height="6" fill="#0f172a" />
-                <rect x="76" y="74" width="6" height="6" fill="#0f172a" />
-                <rect x="82" y="82" width="6" height="6" fill="#0f172a" />
-              </svg>
-            </div>
+            <a
+              href="/download"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="app-qr-box"
+              title="Scan with phone or click to open mobile download page"
+              style={{ display: 'inline-block', textDecoration: 'none', transition: 'transform 0.2s ease' }}
+            >
+              <img
+                src="/qr-download.svg"
+                alt="QR Code to download MediaFlow APK"
+                width="80"
+                height="80"
+                style={{ display: 'block', width: '80px', height: '80px' }}
+              />
+            </a>
             <span className="app-qr-caption">Scan with phone camera</span>
           </div>
         </div>

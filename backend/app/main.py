@@ -130,11 +130,26 @@ async def generic_exception_handler(request: Request, exc: Exception):
 # Mount API routers
 app.include_router(api_router)
 
+@app.get("/download/apk")
+@app.get("/download")
+async def download_apk_direct():
+    """
+    Direct root endpoint for website download button.
+    Redirects with 302 to the latest verified APK on CDN/GitHub.
+    """
+    from fastapi.responses import RedirectResponse
+    from app.services.release_service import release_service
+    data = await release_service.get_latest_version()
+    apk_url = data.get("apk_url", "https://github.com/subhankar3012/mediaflow/releases/latest/download/MediaFlow-release.apk")
+    return RedirectResponse(url=apk_url, status_code=302)
+
 @app.get("/")
 async def root():
     return {
         "engine": "Media Downloader Engine",
         "status": "operational",
         "docs": "/docs",
-        "health": "/api/health"
+        "health": "/api/health",
+        "app_download": "/download/apk"
     }
+
