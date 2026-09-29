@@ -6,7 +6,7 @@ export interface AppDownloadModalProps {
 }
 
 export const AppDownloadModal: React.FC<AppDownloadModalProps> = ({ isOpen, onClose }) => {
-  const [version, setVersion] = React.useState<string>('1.5.7');
+  const [version, setVersion] = React.useState<string>('1.5.8');
   const [downloadUrl, setDownloadUrl] = React.useState<string>('/download/apk');
 
   useEffect(() => {
