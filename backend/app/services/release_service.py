@@ -71,8 +71,8 @@ class ReleaseService:
             if res and res.data and len(res.data) > 0:
                 row = res.data[0]
                 return {
-                    "latest_version": str(row.get("version_name", "1.5.7")),
-                    "version_code": int(row.get("version_code", 22)),
+                    "latest_version": str(row.get("version_name", "1.5.8")),
+                    "version_code": int(row.get("version_code", 23)),
                     "apk_url": str(row.get("apk_url", "https://github.com/subhankar3012/mediaflow/releases/latest/download/MediaFlow-release.apk")),
                     "release_notes": str(row.get("release_notes", "")),
                     "is_mandatory": bool(row.get("is_mandatory", False)),
@@ -94,7 +94,7 @@ class ReleaseService:
                 resp = await client.get(url, headers=headers)
                 if resp.status_code == 200:
                     data = resp.json()
-                    tag = data.get("tag_name", "v1.5.7").lstrip("v")
+                    tag = data.get("tag_name", "v1.5.8").lstrip("v")
                     body = data.get("body", "")
 
                     # Locate APK asset URL if available
@@ -105,11 +105,11 @@ class ReleaseService:
                             break
 
                     # Guess version code or compute from tag
-                    # e.g., 1.5.7 -> 22
+                    # e.g., 1.5.8 -> 23
                     parts = [int(p) for p in tag.split(".") if p.isdigit()]
-                    code = 22
+                    code = 23
                     if len(parts) >= 3 and parts[0] == 1 and parts[1] == 5:
-                        code = 15 + parts[2]  # 1.5.7 -> 22
+                        code = 15 + parts[2]  # 1.5.8 -> 23
 
                     return {
                         "latest_version": tag,
@@ -126,16 +126,17 @@ class ReleaseService:
     def _get_default_release(self) -> Dict[str, Any]:
         """Baseline fallback when remote sources are unavailable."""
         return {
-            "latest_version": "1.5.7",
-            "version_code": 22,
+            "latest_version": "1.5.8",
+            "version_code": 23,
             "apk_url": "https://github.com/subhankar3012/mediaflow/releases/latest/download/MediaFlow-release.apk",
             "release_notes": (
+                "• In-app update system with native FileProvider installer\n"
+                "• High-priority Android update notifications\n"
+                "• Dynamic OS-level version detection\n"
                 "• Fixed X/Twitter photo & video downloads with Syndication API\n"
                 "• Reddit direct image and v.redd.it audio-video muxing\n"
                 "• ImageQualityResolver: Original resolution for X, Reddit, Pinterest\n"
-                "• Fast video thumbnails in Library via native MediaMetadataRetriever\n"
-                "• Resilient PhotoViewer & PlayerScreen with error recovery\n"
-                "• In-app auto updater support"
+                "• Fast video thumbnails in Library via native MediaMetadataRetriever"
             ),
             "is_mandatory": False,
             "min_supported_version": 20
@@ -155,8 +156,8 @@ class ReleaseService:
             payload = {
                 "device_id": str(device_id),
                 "fcm_token": device_data.get("fcm_token"),
-                "app_version": str(device_data.get("app_version", "1.5.7")),
-                "version_code": int(device_data.get("version_code", 22)),
+                "app_version": str(device_data.get("app_version", "1.5.8")),
+                "version_code": int(device_data.get("version_code", 23)),
                 "platform": str(device_data.get("platform", "android")),
                 "android_version": device_data.get("android_version"),
                 "notification_enabled": bool(device_data.get("notification_enabled", True)),

@@ -54,6 +54,7 @@ credentials*.json
 *.apk
 *.aab
 mobile/
+!mobile/version.json
 
 # Vite Cache
 .vite/
